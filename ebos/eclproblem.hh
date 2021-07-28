@@ -905,6 +905,7 @@ public:
         //TODO We may want to only allocate these properties only if active.
         //But since they may be activated at later time we need some more
         //intrastructure to handle it
+        wa_.resize(numDof, 0.0);
         if (FluidSystem::phaseIsActive(FluidSystem::oilPhaseIdx) && FluidSystem::phaseIsActive(FluidSystem::gasPhaseIdx)) {
             maxDRv_.resize(ntpvt, 1e30);
             lastRv_.resize(numDof, 0.0);
@@ -1107,6 +1108,17 @@ public:
     }
 
     /*!
+     * \brief Returns the initial wettability for a given a cell index
+     */
+    Scalar  wa(unsigned elemIdx) const
+    {
+        if (wa_.empty())
+            return 0;
+
+        return wa_[elemIdx];
+    }
+
+    /*!
      * \brief Called by the simulator before each time integration.
      */
     void beginTimeStep()
@@ -1161,7 +1173,27 @@ public:
             aquiferModel_.beginTimeStep();
         tracerModel_.beginTimeStep();
 
+        //update wettability alteration variable
+        bool enablewa_ = EWOMS_GET_PARAM(TypeTag, bool, EnableWa);
+        Scalar tch_ = EWOMS_GET_PARAM(TypeTag, Scalar, Tch);
+        Scalar oldDt = this->simulator().timeStepSize();
+        ElementContext elemCtx(simulator);
+        if(enablewa_){
+          const auto& vanguard = simulator.vanguard();
+          auto elemIt = vanguard.gridView().template begin</*codim=*/0>();
+          const auto& elemEndIt = vanguard.gridView().template end</*codim=*/0>();
+          for (; elemIt != elemEndIt; ++elemIt) {
+            const Element& elem = *elemIt;
+            elemCtx.updatePrimaryStencil(elem);
+            elemCtx.updatePrimaryIntensiveQuantities(/*timeIdx=*/0);
+            unsigned compressedDofIdx = elemCtx.globalSpaceIndex(/*spaceIdx=*/0, /*timeIdx=*/0);
+            const auto& iq = elemCtx.intensiveQuantities(/*spaceIdx=*/0, /*timeIdx=*/0);
+            const auto& fs = iq.fluidState();
+            Scalar So = Opm::decay<Scalar>(fs.saturation(oilPhaseIdx));
+            wa_[compressedDofIdx] += oldDt*So/tch_;
     }
+  }
+  }
 
     /*!
      * \brief Return if the storage term of the first iteration is identical to the storage
@@ -1290,9 +1322,11 @@ public:
     {
         // use the generic code to prepare the output fields and to
         // write the desired VTK files.
-        ParentType::writeOutput(verbose);
 
         bool isSubStep = !EWOMS_GET_PARAM(TypeTag, bool, EnableWriteAllSolutions) && !this->simulator().episodeWillBeOver();
+
+        if (!isSubStep)
+            ParentType::writeOutput();
         if (enableEclOutput_)
             eclWriter_->writeOutput(isSubStep);
     }
@@ -3467,6 +3501,7 @@ private:
     std::vector<InitialFluidState> initialFluidStates_;
 
     std::vector<Scalar> polymerConcentration_;
+    std::vector<Scalar> wa_;
     // polymer molecular weight
     std::vector<Scalar> polymerMoleWeight_;
     std::vector<Scalar> solventSaturation_;

@@ -384,6 +384,10 @@ public:
             mFracCo2_.resize(bufferSize, 0.0);
         }
 
+        bool enablewa_ = EWOMS_GET_PARAM(TypeTag, bool, EnableWa);
+        if (enablewa_)
+            cWa_.resize(bufferSize, 0.0);
+
         if (simulator_.problem().vapparsActive())
             soMax_.resize(bufferSize, 0.0);
 
@@ -639,6 +643,10 @@ public:
 
             if (cPolymer_.size() > 0) {
                 cPolymer_[globalDofIdx] = intQuants.polymerConcentration().value();
+            }
+
+            if (cWa_.size() > 0) {
+                cWa_[globalDofIdx] = intQuants.wa().value();
             }
 
             if (cFoam_.size() > 0) {
@@ -1097,6 +1105,9 @@ public:
 
         if (cPolymer_.size() > 0)
             sol.insert ("POLYMER", Opm::UnitSystem::measure::identity, std::move(cPolymer_), Opm::data::TargetType::RESTART_SOLUTION);
+
+        if (cWa_.size() > 0)
+            sol.insert ("WA", Opm::UnitSystem::measure::identity, std::move(cWa_), Opm::data::TargetType::RESTART_SOLUTION);
 
         if (cFoam_.size() > 0)
             sol.insert ("FOAM", Opm::UnitSystem::measure::identity, std::move(cFoam_), Opm::data::TargetType::RESTART_SOLUTION);
@@ -1750,6 +1761,8 @@ public:
             rv_[elemIdx] = sol.data("RV")[globalDofIndex];
         if (cPolymer_.size() > 0 && sol.has("POLYMER"))
             cPolymer_[elemIdx] = sol.data("POLYMER")[globalDofIndex];
+        if (cWa_.size() > 0 && sol.has("WA"))
+            cWa_[elemIdx] = sol.data("WA")[globalDofIndex];
         if (cFoam_.size() > 0 && sol.has("FOAM"))
             cFoam_[elemIdx] = sol.data("FOAM")[globalDofIndex];
         if (cSalt_.size() > 0 && sol.has("SALT"))
@@ -2350,6 +2363,7 @@ private:
     ScalarBuffer mFracGas_;
     ScalarBuffer mFracCo2_;
     ScalarBuffer cPolymer_;
+    ScalarBuffer cWa_;
     ScalarBuffer cFoam_;
     ScalarBuffer cSalt_;
     ScalarBuffer soMax_;
