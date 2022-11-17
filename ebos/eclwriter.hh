@@ -331,6 +331,10 @@ public:
 
         auto localAquiferData = simulator_.problem().aquiferModel().aquiferData();
         auto localWellTestState = simulator_.problem().wellModel().wellTestState();
+        const auto flowsn = this->eclOutputModule_->getFlowsn();
+        const bool isFlowsn = this->eclOutputModule_->hasFlowsn();
+        const auto flresn = this->eclOutputModule_->getFlresn();
+        const bool isFlresn = this->eclOutputModule_->hasFlresn();
 
         data::Solution localCellData = {};
         if (! isSubStep) {
@@ -365,7 +369,11 @@ public:
                                 this->summaryState(),
                                 simulator_.problem().thresholdPressure().data(),
                                 curTime, nextStepSize,
-                                EWOMS_GET_PARAM(TypeTag, bool, EclOutputDoublePrecision));
+                                EWOMS_GET_PARAM(TypeTag, bool, EclOutputDoublePrecision),
+                                isFlowsn,
+                                flowsn,
+                                isFlresn,
+                                flresn);
         }
     }
 

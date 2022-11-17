@@ -116,6 +116,8 @@ class EclOutputBlackOilModule : public EclGenericOutputBlackoilModule<GetPropTyp
     using Element = typename GridView::template Codim<0>::Entity;
     using ElementIterator = typename GridView::template Codim<0>::Iterator;
     using BaseType = EclGenericOutputBlackoilModule<FluidSystem, Scalar>;
+    using Indices = GetPropType<TypeTag, Properties::Indices>;
+    using FaceDirection = FaceDir::DirEnum;
 
     enum { numPhases = FluidSystem::numPhases };
     enum { oilPhaseIdx = FluidSystem::oilPhaseIdx };
@@ -123,6 +125,7 @@ class EclOutputBlackOilModule : public EclGenericOutputBlackoilModule<GetPropTyp
     enum { waterPhaseIdx = FluidSystem::waterPhaseIdx };
     enum { gasCompIdx = FluidSystem::gasCompIdx };
     enum { oilCompIdx = FluidSystem::oilCompIdx };
+    enum { waterCompIdx = FluidSystem::waterCompIdx };
     enum { enableEnergy = getPropValue<TypeTag, Properties::EnableEnergy>() };
 
 public:
@@ -200,7 +203,8 @@ public:
                              isRestart,
                              simulator_.problem().vapparsActive(std::max(simulator_.episodeIndex(), 0)),
                              simulator_.problem().materialLawManager()->enableHysteresis(),
-                             simulator_.problem().tracerModel().numTracers());
+                             simulator_.problem().tracerModel().numTracers(),
+                             simulator_.problem().eclWriter()->getOutputNnc().size());
     }
 
     /*!
@@ -698,6 +702,86 @@ public:
                         continue;
 
                     this->tracerConcentrations_[tracerIdx][globalDofIdx] = tracerModel.tracerConcentration(tracerIdx, globalDofIdx);
+                }
+            }
+
+            // flows
+            if (!problem.model().linearizer().getFlowsInfo().empty()){
+                const auto& flowInf = problem.model().linearizer().getFlowsInfo();
+                auto flowInfos = flowInf[globalDofIdx];
+                for (auto& flowInfo : flowInfos) {
+                    if (flowInfo.faceDirection == FaceDirection::XPlus){
+                        if (FluidSystem::phaseIsActive(gasPhaseIdx) & !this->flowsi_[gasCompIdx].empty())
+                            this->flowsi_[gasCompIdx][globalDofIdx] = flowInfo.flow[Indices::canonicalToActiveComponentIndex(gasCompIdx)];
+                        if (FluidSystem::phaseIsActive(oilPhaseIdx) & !this->flowsi_[oilCompIdx].empty())
+                            this->flowsi_[oilCompIdx][globalDofIdx] = flowInfo.flow[Indices::canonicalToActiveComponentIndex(oilCompIdx)];
+                        if (FluidSystem::phaseIsActive(waterPhaseIdx) & !this->flowsi_[waterCompIdx].empty())
+                            this->flowsi_[waterCompIdx][globalDofIdx] = flowInfo.flow[Indices::canonicalToActiveComponentIndex(waterCompIdx)];
+                    }
+                    if (flowInfo.faceDirection == FaceDirection::YPlus){
+                        if (FluidSystem::phaseIsActive(gasPhaseIdx) & !this->flowsj_[gasCompIdx].empty())
+                            this->flowsj_[gasCompIdx][globalDofIdx] = flowInfo.flow[Indices::canonicalToActiveComponentIndex(gasCompIdx)];
+                        if (FluidSystem::phaseIsActive(oilPhaseIdx) & !this->flowsj_[oilCompIdx].empty())
+                            this->flowsj_[oilCompIdx][globalDofIdx] = flowInfo.flow[Indices::canonicalToActiveComponentIndex(oilCompIdx)];
+                        if (FluidSystem::phaseIsActive(waterPhaseIdx) & !this->flowsj_[waterCompIdx].empty())
+                            this->flowsj_[waterCompIdx][globalDofIdx] = flowInfo.flow[Indices::canonicalToActiveComponentIndex(waterCompIdx)];
+                    }
+                    if (flowInfo.faceDirection == FaceDirection::ZPlus){
+                        if (FluidSystem::phaseIsActive(gasPhaseIdx) & !this->flowsk_[gasCompIdx].empty())
+                            this->flowsk_[gasCompIdx][globalDofIdx] = flowInfo.flow[Indices::canonicalToActiveComponentIndex(gasCompIdx)];
+                        if (FluidSystem::phaseIsActive(oilPhaseIdx) & !this->flowsk_[oilCompIdx].empty())
+                            this->flowsk_[oilCompIdx][globalDofIdx] = flowInfo.flow[Indices::canonicalToActiveComponentIndex(oilCompIdx)];
+                        if (FluidSystem::phaseIsActive(waterPhaseIdx) & !this->flowsk_[waterCompIdx].empty())
+                            this->flowsk_[waterCompIdx][globalDofIdx] = flowInfo.flow[Indices::canonicalToActiveComponentIndex(waterCompIdx)];
+                    }
+                    if (flowInfo.faceDirection == FaceDirection::Unknown){
+                        if (FluidSystem::phaseIsActive(gasPhaseIdx) & !this->flowsn_[gasCompIdx].second.empty())
+                            this->flowsn_[gasCompIdx].second[flowInfo.nncId] = flowInfo.flow[Indices::canonicalToActiveComponentIndex(gasCompIdx)];
+                        if (FluidSystem::phaseIsActive(oilPhaseIdx) & !this->flowsn_[oilCompIdx].second.empty())
+                            this->flowsn_[oilCompIdx].second[flowInfo.nncId] = flowInfo.flow[Indices::canonicalToActiveComponentIndex(oilCompIdx)];
+                        if (FluidSystem::phaseIsActive(waterPhaseIdx) & !this->flowsn_[waterCompIdx].second.empty())
+                            this->flowsn_[waterCompIdx].second[flowInfo.nncId] = flowInfo.flow[Indices::canonicalToActiveComponentIndex(waterCompIdx)];
+                    }
+                }
+            }
+
+            // flres
+            if (!problem.model().linearizer().getFlresInfo().empty()){
+                const auto& flreInf = problem.model().linearizer().getFlresInfo();
+                auto flreInfos =flreInf[globalDofIdx];
+                for (auto& flreInfo : flreInfos) {
+                    if (flreInfo.faceDirection == FaceDirection::XPlus){
+                        if (FluidSystem::phaseIsActive(gasPhaseIdx) & !this->flresi_[gasCompIdx].empty())
+                            this->flresi_[gasCompIdx][globalDofIdx] = flreInfo.flow[gasPhaseIdx];
+                        if (FluidSystem::phaseIsActive(oilPhaseIdx) & !this->flresi_[oilCompIdx].empty())
+                            this->flresi_[oilCompIdx][globalDofIdx] = flreInfo.flow[oilPhaseIdx];
+                        if (FluidSystem::phaseIsActive(waterPhaseIdx) & !this->flresi_[waterCompIdx].empty())
+                            this->flresi_[waterCompIdx][globalDofIdx] = flreInfo.flow[waterPhaseIdx];
+                    }
+                    if (flreInfo.faceDirection == FaceDirection::YPlus){
+                        if (FluidSystem::phaseIsActive(gasPhaseIdx) & !this->flresj_[gasCompIdx].empty())
+                            this->flresj_[gasCompIdx][globalDofIdx] = flreInfo.flow[gasPhaseIdx];
+                        if (FluidSystem::phaseIsActive(oilPhaseIdx) & !this->flresj_[oilCompIdx].empty())
+                            this->flresj_[oilCompIdx][globalDofIdx] = flreInfo.flow[oilPhaseIdx];
+                        if (FluidSystem::phaseIsActive(waterPhaseIdx) & !this->flresj_[waterCompIdx].empty())
+                            this->flresj_[waterCompIdx][globalDofIdx] = flreInfo.flow[waterPhaseIdx];
+                    }
+                    if (flreInfo.faceDirection == FaceDirection::ZPlus){
+                        if (FluidSystem::phaseIsActive(gasPhaseIdx) & !this->flresk_[gasCompIdx].empty())
+                            this->flresk_[gasCompIdx][globalDofIdx] = flreInfo.flow[gasPhaseIdx];
+                        if (FluidSystem::phaseIsActive(oilPhaseIdx) & !this->flresk_[oilCompIdx].empty())
+                            this->flresk_[oilCompIdx][globalDofIdx] = flreInfo.flow[oilPhaseIdx];
+                        if (FluidSystem::phaseIsActive(waterPhaseIdx) & !this->flresk_[waterCompIdx].empty())
+                            this->flresk_[waterCompIdx][globalDofIdx] = flreInfo.flow[waterPhaseIdx];
+                    }
+                    if (flreInfo.faceDirection == FaceDirection::Unknown){
+                        if (FluidSystem::phaseIsActive(gasPhaseIdx) & !this->flresn_[gasCompIdx].second.empty())
+                            this->flresn_[gasCompIdx].second[flreInfo.nncId] = flreInfo.flow[gasPhaseIdx];
+                        if (FluidSystem::phaseIsActive(oilPhaseIdx) & !this->flresn_[oilCompIdx].second.empty())
+                            this->flresn_[oilCompIdx].second[flreInfo.nncId] = flreInfo.flow[oilPhaseIdx];
+                        if (FluidSystem::phaseIsActive(waterPhaseIdx) & !this->flresn_[waterCompIdx].second.empty())
+                            this->flresn_[waterCompIdx].second[flreInfo.nncId] = flreInfo.flow[waterPhaseIdx];
+                    }
                 }
             }
         }

@@ -339,7 +339,6 @@ exportNncStructure_(const std::unordered_map<int,int>& cartesianToActive, const 
     std::size_t ny = eclState_.getInputGrid().getNY();
     auto nncData = eclState_.getInputNNC().input();
     const auto& unitSystem = eclState_.getDeckUnitSystem();
-    std::vector<NNCdata> outputNnc;
     std::size_t index = 0;
 
     for( const auto& entry : nncData ) {
@@ -352,7 +351,7 @@ exportNncStructure_(const std::unordered_map<int,int>& cartesianToActive, const 
             auto tt = unitSystem.from_si(UnitSystem::measure::transmissibility, entry.trans);
             // Eclipse ignores NNCs (with EDITNNC applied) that are small. Seems like the threshold is 1.0e-6
             if ( tt >= 1.0e-6 )
-                outputNnc.emplace_back(entry.cell1, entry.cell2, entry.trans);
+                outputNnc_.emplace_back(entry.cell1, entry.cell2, entry.trans);
         }
         ++index;
     }
@@ -409,11 +408,11 @@ exportNncStructure_(const std::unordered_map<int,int>& cartesianToActive, const 
                 // to zero when setting up the simulator. These will be ignored here, too.
                 auto tt = unitSystem.from_si(UnitSystem::measure::transmissibility, std::abs(t));
                 if ( tt > 1e-12 )
-                    outputNnc.push_back({cc1, cc2, t});
+                    outputNnc_.push_back({cc1, cc2, t});
             }
         }
     }
-    return outputNnc;
+    return outputNnc_;
 }
 
 template<class Grid, class EquilGrid, class GridView, class ElementMapper, class Scalar>
@@ -431,7 +430,11 @@ doWriteOutput(const int                     reportStepNum,
               const std::vector<Scalar>& thresholdPressure,
               Scalar curTime,
               Scalar nextStepSize,
-              bool doublePrecision)
+              bool doublePrecision,
+              bool isFlowsn,
+              const std::array<std::pair<std::string, std::vector<Scalar>>, 3>& flowsn,
+              bool isFlresn,
+              const std::array<std::pair<std::string, std::vector<Scalar>>, 3>& flresn)
 {
     const auto isParallel = this->collectToIORank_.isParallel();
     const bool needsReordering = this->collectToIORank_.doesNeedReordering();
@@ -458,6 +461,22 @@ doWriteOutput(const int                     reportStepNum,
     // Add suggested next timestep to extra data.
     if (! isSubStep) {
         restartValue.addExtra("OPMEXTRA", std::vector<double>(1, nextStepSize));
+    }
+
+    // Add nnc flows and flres is existing.
+    if (isFlowsn) {
+        for (const auto& flows : flowsn) {
+            if (flows.first.empty())
+                continue;
+            restartValue.addExtra(flows.first, UnitSystem::measure::rate, flows.second);
+        }
+    }
+    if (isFlresn) {
+        for (const auto& flres : flresn) {
+            if (flres.first.empty())
+                continue;
+            restartValue.addExtra(flres.first, UnitSystem::measure::rate, flres.second);
+        }
     }
 
     // first, create a tasklet to write the data for the current time
