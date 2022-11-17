@@ -753,6 +753,47 @@ assignToSolution(data::Solution& sol)
         // reallocated)
         tracerConcentrations_.resize(0);
     }
+
+    // Flows
+    if (FluidSystem::phaseIsActive(gasPhaseIdx) && !flowsi_[gasCompIdx].empty())
+        sol.insert("FLOGASI+", UnitSystem::measure::rate, flowsi_[gasCompIdx], data::TargetType::RESTART_SOLUTION); 
+    if (FluidSystem::phaseIsActive(gasPhaseIdx) && !flowsj_[gasCompIdx].empty())
+        sol.insert("FLOGASJ+", UnitSystem::measure::rate, flowsj_[gasCompIdx], data::TargetType::RESTART_SOLUTION);
+    if (FluidSystem::phaseIsActive(gasPhaseIdx) && !flowsk_[gasCompIdx].empty())
+        sol.insert("FLOGASK+", UnitSystem::measure::rate, flowsk_[gasCompIdx], data::TargetType::RESTART_SOLUTION);
+    if (FluidSystem::phaseIsActive(oilPhaseIdx) && !flowsi_[oilCompIdx].empty())
+        sol.insert("FLOOILI+", UnitSystem::measure::rate, flowsi_[oilCompIdx], data::TargetType::RESTART_SOLUTION);
+    if (FluidSystem::phaseIsActive(oilPhaseIdx) && !flowsj_[oilCompIdx].empty())
+        sol.insert("FLOOILJ+", UnitSystem::measure::rate, flowsj_[oilCompIdx], data::TargetType::RESTART_SOLUTION);
+    if (FluidSystem::phaseIsActive(oilPhaseIdx) && !flowsk_[oilCompIdx].empty())
+        sol.insert("FLOOILK+", UnitSystem::measure::rate, flowsk_[oilCompIdx], data::TargetType::RESTART_SOLUTION);
+    if (FluidSystem::phaseIsActive(waterPhaseIdx) && !flowsi_[waterCompIdx].empty())
+        sol.insert("FLOWATI+", UnitSystem::measure::rate, flowsi_[waterCompIdx], data::TargetType::RESTART_SOLUTION);
+    if (FluidSystem::phaseIsActive(waterPhaseIdx) && !flowsj_[waterCompIdx].empty())
+        sol.insert("FLOWATJ+", UnitSystem::measure::rate, flowsj_[waterCompIdx], data::TargetType::RESTART_SOLUTION);
+    if (FluidSystem::phaseIsActive(waterPhaseIdx) && !flowsk_[waterCompIdx].empty())
+        sol.insert("FLOWATK+", UnitSystem::measure::rate, flowsk_[waterCompIdx], data::TargetType::RESTART_SOLUTION);
+
+    // Flres
+    if (FluidSystem::phaseIsActive(gasPhaseIdx) && !flresi_[gasCompIdx].empty())
+        sol.insert("FLRGASI+", UnitSystem::measure::gas_surface_rate, flresi_[gasCompIdx], data::TargetType::RESTART_SOLUTION);
+    if (FluidSystem::phaseIsActive(gasPhaseIdx) && !flresj_[gasCompIdx].empty())
+        sol.insert("FLRGASJ+", UnitSystem::measure::gas_surface_rate, flresj_[gasCompIdx], data::TargetType::RESTART_SOLUTION);
+    if (FluidSystem::phaseIsActive(gasPhaseIdx) && !flresk_[gasCompIdx].empty())
+        sol.insert("FLRGASK+", UnitSystem::measure::gas_surface_rate, flresk_[gasCompIdx], data::TargetType::RESTART_SOLUTION);
+    if (FluidSystem::phaseIsActive(oilPhaseIdx) && !flresi_[oilCompIdx].empty())
+        sol.insert("FLROILI+", UnitSystem::measure::liquid_surface_rate, flresi_[oilCompIdx], data::TargetType::RESTART_SOLUTION);
+    if (FluidSystem::phaseIsActive(oilPhaseIdx) && !flresj_[oilCompIdx].empty())
+        sol.insert("FLROILJ+", UnitSystem::measure::liquid_surface_rate, flresj_[oilCompIdx], data::TargetType::RESTART_SOLUTION);
+    if (FluidSystem::phaseIsActive(oilPhaseIdx) && !flresk_[oilCompIdx].empty())
+        sol.insert("FLROILK+", UnitSystem::measure::liquid_surface_rate, flresk_[oilCompIdx], data::TargetType::RESTART_SOLUTION);
+    if (FluidSystem::phaseIsActive(waterPhaseIdx) && !flresi_[waterCompIdx].empty())
+        sol.insert("FLRWATI+", UnitSystem::measure::liquid_surface_rate, flresi_[waterCompIdx], data::TargetType::RESTART_SOLUTION);
+    if (FluidSystem::phaseIsActive(waterPhaseIdx) && !flresj_[waterCompIdx].empty())
+        sol.insert("FLRWATJ+", UnitSystem::measure::liquid_surface_rate, flresj_[waterCompIdx], data::TargetType::RESTART_SOLUTION);
+    if (FluidSystem::phaseIsActive(waterPhaseIdx) && !flresk_[waterCompIdx].empty())
+        sol.insert("FLRWATK+", UnitSystem::measure::liquid_surface_rate, flresk_[waterCompIdx], data::TargetType::RESTART_SOLUTION);
+
 }
 
 template<class FluidSystem,class Scalar>
@@ -868,7 +909,8 @@ doAllocBuffers(unsigned bufferSize,
                const bool isRestart,
                const bool vapparsActive,
                const bool enableHysteresis,
-               unsigned numTracers)
+               unsigned numTracers,
+               unsigned numOutputNnc)
 {
     // Only output RESTART_AUXILIARY asked for by the user.
     std::map<std::string, int> rstKeywords = schedule_.rst_keywords(reportStepNum);
@@ -1059,6 +1101,100 @@ doAllocBuffers(unsigned bufferSize,
     if (FluidSystem::phaseIsActive(gasPhaseIdx) && rstKeywords["BG"] > 0) {
         rstKeywords["BG"] = 0;
         invB_[gasPhaseIdx].resize(bufferSize, 0.0);
+    }
+    
+    if (rstKeywords["FLOWS"] > 0) {
+        rstKeywords["FLOWS"] = 0;
+        enableFlows_ = true;
+        if (FluidSystem::phaseIsActive(gasPhaseIdx)){
+            if (this->eclState_.gridDims()[0] > 1)
+                flowsi_[gasCompIdx].resize(bufferSize, 0.0);
+            if (this->eclState_.gridDims()[1] > 1)
+                flowsj_[gasCompIdx].resize(bufferSize, 0.0);
+            if (this->eclState_.gridDims()[2] > 1)
+                flowsk_[gasCompIdx].resize(bufferSize, 0.0);
+            if (numOutputNnc > 0){
+                enableFlowsn_ = true;
+                flowsn_[gasCompIdx].first = "FLOGASN+";
+                flowsn_[gasCompIdx].second.first.resize(numOutputNnc, -1);
+                flowsn_[gasCompIdx].second.second.resize(numOutputNnc, 0.0);
+            }
+        }
+        if (FluidSystem::phaseIsActive(oilPhaseIdx)){
+            if (this->eclState_.gridDims()[0] > 1)
+                flowsi_[oilCompIdx].resize(bufferSize, 0.0);
+            if (this->eclState_.gridDims()[1] > 1)
+                flowsj_[oilCompIdx].resize(bufferSize, 0.0);
+            if (this->eclState_.gridDims()[2] > 1)
+                flowsk_[oilCompIdx].resize(bufferSize, 0.0);
+            if (numOutputNnc > 0){
+                enableFlowsn_ = true;
+                flowsn_[oilCompIdx].first = "FLOOILN+";
+                flowsn_[oilCompIdx].second.first.resize(numOutputNnc, -1);
+                flowsn_[oilCompIdx].second.second.resize(numOutputNnc, 0.0);
+            }
+        }
+        if (FluidSystem::phaseIsActive(waterPhaseIdx)){
+            if (this->eclState_.gridDims()[0] > 1)
+                flowsi_[waterCompIdx].resize(bufferSize, 0.0);
+            if (this->eclState_.gridDims()[1] > 1)
+                flowsj_[waterCompIdx].resize(bufferSize, 0.0);
+            if (this->eclState_.gridDims()[2] > 1)
+                flowsk_[waterCompIdx].resize(bufferSize, 0.0);
+            if (numOutputNnc > 0){
+                enableFlowsn_ = true;
+                flowsn_[waterCompIdx].first = "FLOWATN+";
+                flowsn_[waterCompIdx].second.first.resize(numOutputNnc, -1);
+                flowsn_[waterCompIdx].second.second.resize(numOutputNnc, 0.0);
+            }
+        }
+    }
+
+    if (rstKeywords["FLORES"] > 0) {
+        rstKeywords["FLORES"] = 0;
+        enableFlres_ = true;
+        if (FluidSystem::phaseIsActive(gasPhaseIdx)){
+            if (this->eclState_.gridDims()[0] > 1)
+                flresi_[gasCompIdx].resize(bufferSize, 0.0);
+            if (this->eclState_.gridDims()[1] > 1)
+                flresj_[gasCompIdx].resize(bufferSize, 0.0);
+            if (this->eclState_.gridDims()[2] > 1)
+                flresk_[gasCompIdx].resize(bufferSize, 0.0);
+            if (numOutputNnc > 0){
+                enableFlresn_ = true;
+                flresn_[gasCompIdx].first = "FLRGASN+";
+                flresn_[gasCompIdx].second.first.resize(numOutputNnc, -1);
+                flresn_[gasCompIdx].second.second.resize(numOutputNnc, 0.0);
+            }
+        }
+        if (FluidSystem::phaseIsActive(oilPhaseIdx)){
+            if (this->eclState_.gridDims()[0] > 1)
+                flresi_[oilCompIdx].resize(bufferSize, 0.0);
+            if (this->eclState_.gridDims()[1] > 1)
+                flresj_[oilCompIdx].resize(bufferSize, 0.0);
+            if (this->eclState_.gridDims()[2] > 1)
+                flresk_[oilCompIdx].resize(bufferSize, 0.0);
+            if (numOutputNnc > 0){
+                enableFlresn_ = true;
+                flresn_[oilCompIdx].first = "FLROILN+";
+                flresn_[oilCompIdx].second.first.resize(numOutputNnc, -1);
+                flresn_[oilCompIdx].second.second.resize(numOutputNnc, 0.0);
+            }
+        }
+        if (FluidSystem::phaseIsActive(waterPhaseIdx)){
+            if (this->eclState_.gridDims()[0] > 1)
+                flresi_[waterCompIdx].resize(bufferSize, 0.0);
+            if (this->eclState_.gridDims()[1] > 1)
+                flresj_[waterCompIdx].resize(bufferSize, 0.0);
+            if (this->eclState_.gridDims()[2] > 1)
+                flresk_[waterCompIdx].resize(bufferSize, 0.0);
+            if (numOutputNnc > 0){
+                enableFlresn_ = true;
+                flresn_[waterCompIdx].first = "FLRWATN+";
+                flresn_[waterCompIdx].second.first.resize(numOutputNnc, -1);
+                flresn_[waterCompIdx].second.second.resize(numOutputNnc, 0.0);
+            }
+        }
     }
 
     if (rstKeywords["DEN"] > 0) {

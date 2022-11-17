@@ -222,7 +222,9 @@ public:
                                            localGroupAndNetworkData,
                                            localAquiferData,
                                            localWellTestState,
-                                           this->eclOutputModule_->getInterRegFlows());
+                                           this->eclOutputModule_->getInterRegFlows(),
+                                           {},
+                                           {});
 
             if (this->collectToIORank_.isIORank()) {
                 auto& iregFlows = this->collectToIORank_.globalInterRegFlows();
@@ -331,6 +333,10 @@ public:
 
         auto localAquiferData = simulator_.problem().aquiferModel().aquiferData();
         auto localWellTestState = simulator_.problem().wellModel().wellTestState();
+        const auto flowsn = this->eclOutputModule_->getFlowsn();
+        const bool isFlowsn = this->eclOutputModule_->hasFlowsn();
+        const auto flresn = this->eclOutputModule_->getFlresn();
+        const bool isFlresn = this->eclOutputModule_->hasFlresn();
 
         data::Solution localCellData = {};
         if (! isSubStep) {
@@ -348,7 +354,9 @@ public:
                                            localGroupAndNetworkData,
                                            localAquiferData,
                                            localWellTestState,
-                                           {});
+                                           {},
+                                           flowsn,
+                                           flresn);
         }
 
         if (this->collectToIORank_.isIORank()) {
@@ -365,7 +373,11 @@ public:
                                 this->summaryState(),
                                 simulator_.problem().thresholdPressure().data(),
                                 curTime, nextStepSize,
-                                EWOMS_GET_PARAM(TypeTag, bool, EclOutputDoublePrecision));
+                                EWOMS_GET_PARAM(TypeTag, bool, EclOutputDoublePrecision),
+                                isFlowsn,
+                                std::move(flowsn),
+                                isFlresn,
+                                std::move(flresn));
         }
     }
 

@@ -104,6 +104,11 @@ public:
         simulation_report_ = report;
     }
 
+    const std::vector<NNCdata>& getOutputNnc() const
+    {
+        return outputNnc_;
+    }
+
 protected:
     const TransmissibilityType& globalTrans() const;
     unsigned int gridEquilIdxToGridIdx(unsigned int elemIndex) const;
@@ -121,7 +126,11 @@ protected:
                        const std::vector<Scalar>& thresholdPressure,
                        Scalar curTime,
                        Scalar nextStepSize,
-                       bool doublePrecision);
+                       bool doublePrecision,
+                       bool isFlowsn,
+                       const std::array<std::pair<std::string, std::pair<std::vector<int>, std::vector<double>>>, 3>& flowsn,
+                       bool isFlresn,
+                       const std::array<std::pair<std::string, std::pair<std::vector<int>, std::vector<double>>>, 3>& flresn);
 
     void evalSummary(int reportStepNum,
                      Scalar curTime,
@@ -154,6 +163,7 @@ protected:
     std::vector<std::size_t> wbp_index_list_;
     SimulatorReportSingle sub_step_report_;
     SimulatorReport simulation_report_;
+    mutable std::vector<NNCdata> outputNnc_;
 
 private:
     data::Solution computeTrans_(const std::unordered_map<int,int>& cartesianToActive, const std::function<unsigned int(unsigned int)>& map) const;

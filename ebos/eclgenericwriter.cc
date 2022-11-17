@@ -260,6 +260,13 @@ writeInit(const std::function<unsigned int(unsigned int)>& map)
         auto cartMap = cartesianToCompressed(equilGrid_->size(0), UgGridHelpers::globalCell(*equilGrid_));
         eclIO_->writeInitial(computeTrans_(cartMap, map), integerVectors, exportNncStructure_(cartMap, map));
     }
+#if HAVE_MPI
+    if (collectToIORank_.isParallel()) {
+        const auto& comm = grid_.comm();
+        Opm::EclMpiSerializer ser(comm);
+        ser.broadcast(outputNnc_);
+    }
+#endif
 }
 
 template<class Grid, class EquilGrid, class GridView, class ElementMapper, class Scalar>
@@ -339,7 +346,6 @@ exportNncStructure_(const std::unordered_map<int,int>& cartesianToActive, const 
     std::size_t ny = eclState_.getInputGrid().getNY();
     auto nncData = eclState_.getInputNNC().input();
     const auto& unitSystem = eclState_.getDeckUnitSystem();
-    std::vector<NNCdata> outputNnc;
     std::size_t index = 0;
 
     for( const auto& entry : nncData ) {
@@ -352,7 +358,7 @@ exportNncStructure_(const std::unordered_map<int,int>& cartesianToActive, const 
             auto tt = unitSystem.from_si(UnitSystem::measure::transmissibility, entry.trans);
             // Eclipse ignores NNCs (with EDITNNC applied) that are small. Seems like the threshold is 1.0e-6
             if ( tt >= 1.0e-6 )
-                outputNnc.emplace_back(entry.cell1, entry.cell2, entry.trans);
+                outputNnc_.emplace_back(entry.cell1, entry.cell2, entry.trans);
         }
         ++index;
     }
@@ -409,11 +415,11 @@ exportNncStructure_(const std::unordered_map<int,int>& cartesianToActive, const 
                 // to zero when setting up the simulator. These will be ignored here, too.
                 auto tt = unitSystem.from_si(UnitSystem::measure::transmissibility, std::abs(t));
                 if ( tt > 1e-12 )
-                    outputNnc.push_back({cc1, cc2, t});
+                    outputNnc_.push_back({cc1, cc2, t});
             }
         }
     }
-    return outputNnc;
+    return outputNnc_;
 }
 
 template<class Grid, class EquilGrid, class GridView, class ElementMapper, class Scalar>
@@ -431,7 +437,11 @@ doWriteOutput(const int                     reportStepNum,
               const std::vector<Scalar>& thresholdPressure,
               Scalar curTime,
               Scalar nextStepSize,
-              bool doublePrecision)
+              bool doublePrecision,
+              bool isFlowsn,
+              const std::array<std::pair<std::string, std::pair<std::vector<int>, std::vector<double>>>, 3>& flowsn,
+              bool isFlresn,
+              const std::array<std::pair<std::string, std::pair<std::vector<int>, std::vector<double>>>, 3>& flresn)
 {
     const auto isParallel = this->collectToIORank_.isParallel();
     const bool needsReordering = this->collectToIORank_.doesNeedReordering();
@@ -458,6 +468,27 @@ doWriteOutput(const int                     reportStepNum,
     // Add suggested next timestep to extra data.
     if (! isSubStep) {
         restartValue.addExtra("OPMEXTRA", std::vector<double>(1, nextStepSize));
+    }
+
+    // Add nnc flows and flres is existing.
+    if (isFlowsn) {
+        const auto flowsn_global = isParallel ? this->collectToIORank_.globalFlowsn() : std::move(flowsn);
+        for (const auto& flows : flowsn_global) {
+            if (flows.first.empty())
+                continue;
+            restartValue.addExtra(flows.first, UnitSystem::measure::rate, flows.second.second);
+        }
+    }
+    if (isFlresn) {
+        const auto flresn_global = isParallel ? this->collectToIORank_.globalFlresn() : std::move(flresn);
+        for (const auto& flres : flresn_global) {
+            if (flres.first.empty())
+                continue;
+            if (flres.first == "FLRGASN+")
+                restartValue.addExtra(flres.first, UnitSystem::measure::gas_surface_rate, flres.second.second);
+            else
+                restartValue.addExtra(flres.first, UnitSystem::measure::liquid_surface_rate, flres.second.second);
+        }
     }
 
     // first, create a tasklet to write the data for the current time

@@ -773,7 +773,7 @@ public:
     PackUnpackInterRegFlows(const EclInterRegFlowMap& localInterRegFlows,
                             EclInterRegFlowMap&       globalInterRegFlows,
                             const bool                isIORank)
-        : localInterRegFlows_ (localInterRegFlows)
+        : localInterRegFlows_(localInterRegFlows)
         , globalInterRegFlows_(globalInterRegFlows)
     {
         if (! isIORank) { return; }
@@ -803,6 +803,128 @@ public:
     // unpack all data associated with link
     void unpack(int /*link*/, MessageBufferType& buffer)
     { this->globalInterRegFlows_.read(buffer); }
+};
+
+class PackUnpackFlowsn : public P2PCommunicatorType::DataHandleInterface
+{
+    const std::array<std::pair<std::string, std::pair<std::vector<int>, std::vector<double>>>, 3>& localFlowsn_;
+    std::array<std::pair<std::string, std::pair<std::vector<int>, std::vector<double>>>, 3>& globalFlowsn_;
+
+public:
+    PackUnpackFlowsn(const std::array<std::pair<std::string, std::pair<std::vector<int>, std::vector<double>>>, 3> & localFlowsn,
+                     std::array<std::pair<std::string, std::pair<std::vector<int>, std::vector<double>>>, 3>& globalFlowsn,
+                     const bool isIORank)
+        : localFlowsn_(localFlowsn)
+        , globalFlowsn_(globalFlowsn)
+    {
+        if (! isIORank) { return; }
+
+        MessageBufferType buffer;
+        this->pack(0, buffer);
+
+        // pass a dummy_link to satisfy virtual class
+        const int dummyLink = -1;
+        this->unpack(dummyLink, buffer);
+    }
+
+    void pack(int link, MessageBufferType& buffer)
+    {
+        if (link != 0)
+            throw std::logic_error("link in method pack is not 0 as expected");
+        for (int i = 0; i < 3; ++i) {
+            const auto& name = localFlowsn_[i].first;
+            buffer.write(name);
+            unsigned int size = localFlowsn_[i].second.first.size();
+            buffer.write(size);
+            for (unsigned int j = 0; j < size; ++j) {
+                const auto& nncIdx = localFlowsn_[i].second.first[j];
+                buffer.write(nncIdx);
+                const auto& flows = localFlowsn_[i].second.second[j];
+                buffer.write(flows);
+            }
+        }
+    }
+
+    void unpack(int /*link*/, MessageBufferType& buffer)
+    {
+        for (int i = 0; i < 3; ++i) {
+            std::string name;
+            buffer.read(name);
+            globalFlowsn_[i].first = name;
+            unsigned int size = 0;
+            buffer.read(size);
+            for (unsigned int j = 0; j < size; ++j) {
+                int nncIdx;
+                double data;
+                buffer.read(nncIdx);
+                buffer.read(data);
+                if (nncIdx < 0)
+                    continue;
+                globalFlowsn_[i].second.second[nncIdx] = data;
+            }
+        }
+    }
+};
+
+class PackUnpackFlresn : public P2PCommunicatorType::DataHandleInterface
+{
+    const std::array<std::pair<std::string, std::pair<std::vector<int>, std::vector<double>>>, 3>& localFlresn_;
+    std::array<std::pair<std::string, std::pair<std::vector<int>, std::vector<double>>>, 3>& globalFlresn_;
+
+public:
+    PackUnpackFlresn(const std::array<std::pair<std::string, std::pair<std::vector<int>, std::vector<double>>>, 3> & localFlresn,
+                     std::array<std::pair<std::string, std::pair<std::vector<int>, std::vector<double>>>, 3>& globalFlresn,
+                     const bool isIORank)
+        : localFlresn_(localFlresn)
+        , globalFlresn_(globalFlresn)
+    {
+        if (! isIORank) { return; }
+
+        MessageBufferType buffer;
+        this->pack(0, buffer);
+
+        // pass a dummy_link to satisfy virtual class
+        const int dummyLink = -1;
+        this->unpack(dummyLink, buffer);
+    }
+
+     void pack(int link, MessageBufferType& buffer)
+    {
+        if (link != 0)
+            throw std::logic_error("link in method pack is not 0 as expected");
+        for (int i = 0; i < 3; ++i) {
+            const auto& name = localFlresn_[i].first;
+            buffer.write(name);
+            unsigned int size = localFlresn_[i].second.first.size();
+            buffer.write(size);
+            for (unsigned int j = 0; j < size; ++j) {
+                const auto& nncIdx = localFlresn_[i].second.first[j];
+                buffer.write(nncIdx);
+                const auto& flres = localFlresn_[i].second.second[j];
+                buffer.write(flres);
+            }
+        }
+    }
+
+    void unpack(int /*link*/, MessageBufferType& buffer)
+    {
+        for (int i = 0; i < 3; ++i) {
+            std::string name;
+            buffer.read(name);
+            globalFlresn_[i].first = name;
+            unsigned int size = 0;
+            buffer.read(size);
+            for (unsigned int j = 0; j < size; ++j) {
+                int nncIdx;
+                double data;
+                buffer.read(nncIdx);
+                buffer.read(data);
+                if (nncIdx < 0)
+                    continue;
+                globalFlresn_[i].second.second[nncIdx] = data;
+            }
+        }
+    }
 };
 
 template <class Grid, class EquilGrid, class GridView>
@@ -937,7 +1059,9 @@ collect(const data::Solution& localCellData,
         const data::GroupAndNetworkValues& localGroupAndNetworkData,
         const data::Aquifers& localAquiferData,
         const WellTestState& localWellTestState,
-        const EclInterRegFlowMap& localInterRegFlows)
+        const EclInterRegFlowMap& localInterRegFlows,
+        const std::array<std::pair<std::string, std::pair<std::vector<int>, std::vector<double>>>, 3>& localFlowsn,
+        const std::array<std::pair<std::string, std::pair<std::vector<int>, std::vector<double>>>, 3>& localFlresn)
 {
     globalCellData_ = {};
     globalBlockData_.clear();
@@ -947,6 +1071,8 @@ collect(const data::Solution& localCellData,
     globalAquiferData_.clear();
     globalWellTestState_.clear();
     this->globalInterRegFlows_.clear();
+    globalFlowsn_ = {};
+    globalFlresn_ = {};
 
     // index maps only have to be build when reordering is needed
     if(!needsReordering && !isParallel())
@@ -965,6 +1091,16 @@ collect(const data::Solution& localCellData,
     if (! isParallel()) {
         // no need to collect anything.
         return;
+    }
+
+    // Set the right sizes for Flowsn and Flresn
+    for (int i = 0; i < 3; ++i) {
+        unsigned int sizeFlr = localFlresn[i].second.first.size();
+        globalFlresn_[i].second.first.resize(sizeFlr, 0);
+        globalFlresn_[i].second.second.resize(sizeFlr, 0.0);
+        unsigned int sizeFlo = localFlowsn[i].second.first.size();
+        globalFlowsn_[i].second.first.resize(sizeFlo, 0);
+        globalFlowsn_[i].second.second.resize(sizeFlo, 0.0);
     }
 
     PackUnPackWellData packUnpackWellData {
@@ -1009,6 +1145,18 @@ collect(const data::Solution& localCellData,
         this->isIORank()
     };
 
+    PackUnpackFlowsn packUnpackFlowsn {
+        localFlowsn,
+        this->globalFlowsn_,
+        this->isIORank()
+    };
+
+    PackUnpackFlresn packUnpackFlresn {
+        localFlresn,
+        this->globalFlresn_,
+        this->isIORank()
+    };
+
     toIORankComm_.exchange(packUnpackCellData);
     toIORankComm_.exchange(packUnpackWellData);
     toIORankComm_.exchange(packUnpackGroupAndNetworkData);
@@ -1017,6 +1165,8 @@ collect(const data::Solution& localCellData,
     toIORankComm_.exchange(packUnpackAquiferData);
     toIORankComm_.exchange(packUnpackWellTestState);
     toIORankComm_.exchange(packUnpackInterRegFlows);
+    toIORankComm_.exchange(packUnpackFlowsn);
+    toIORankComm_.exchange(packUnpackFlresn);
 
 #ifndef NDEBUG
     // make sure every process is on the same page

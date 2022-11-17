@@ -186,6 +186,36 @@ public:
         return 0;
     }
 
+    const std::array<std::pair<std::string, std::pair<std::vector<int>, std::vector<double>>>, 3>& getFlowsn() const
+    {
+        return this->flowsn_;
+    }
+
+    bool hasFlowsn() const
+    {
+        return enableFlowsn_;
+    }
+
+    bool hasFlows() const
+    {
+        return enableFlows_;
+    }
+
+    const std::array<std::pair<std::string, std::pair<std::vector<int>, std::vector<double>>>, 3>& getFlresn() const
+    {
+        return this->flresn_;
+    }
+
+    bool hasFlresn() const
+    {
+        return enableFlresn_;
+    }
+
+    bool hasFlres() const
+    {
+        return enableFlres_;
+    }
+
     bool needInterfaceFluxes([[maybe_unused]] const bool isSubStep) const
     {
         return this->interRegionFlows_.wantInterRegflowSummary();
@@ -213,9 +243,13 @@ protected:
     using ScalarBuffer = std::vector<Scalar>;
     using StringBuffer = std::vector<std::string>;
     enum { numPhases = FluidSystem::numPhases };
+    enum { numComponents = FluidSystem::numComponents };
     enum { gasPhaseIdx = FluidSystem::gasPhaseIdx };
     enum { oilPhaseIdx = FluidSystem::oilPhaseIdx };
     enum { waterPhaseIdx = FluidSystem::waterPhaseIdx };
+    enum { gasCompIdx = FluidSystem::gasCompIdx };
+    enum { oilCompIdx = FluidSystem::oilCompIdx };
+    enum { waterCompIdx = FluidSystem::waterCompIdx };
 
     EclGenericOutputBlackoilModule(const EclipseState& eclState,
                                    const Schedule& schedule,
@@ -306,7 +340,8 @@ protected:
                         const bool isRestart,
                         const bool vapparsActive,
                         const bool enableHysteresis,
-                        unsigned numTracers);
+                        unsigned numTracers,
+                        unsigned numOutputNnc);
 
     void fipUnitConvert_(std::unordered_map<Inplace::Phase, Scalar>& fip) const;
 
@@ -396,6 +431,11 @@ protected:
     bool outputFipRestart_;
     bool computeFip_;
 
+    bool enableFlows_;
+    bool enableFlres_;
+    bool enableFlowsn_;
+    bool enableFlresn_;
+
     std::unordered_map<Inplace::Phase, ScalarBuffer> fip_;
     std::unordered_map<std::string, std::vector<int>> regions_;
     std::unordered_map<Inplace::Phase, std::vector<SummaryConfigNode>> regionNodes_;
@@ -461,6 +501,16 @@ protected:
     std::array<ScalarBuffer, numPhases> relativePermeability_;
 
     std::vector<ScalarBuffer> tracerConcentrations_;
+
+    std::array<ScalarBuffer, numPhases> flowsi_;
+    std::array<ScalarBuffer, numPhases> flowsj_;
+    std::array<ScalarBuffer, numPhases> flowsk_;
+    std::array<ScalarBuffer, numPhases> flresi_;
+    std::array<ScalarBuffer, numPhases> flresj_;
+    std::array<ScalarBuffer, numPhases> flresk_;
+
+    std::array<std::pair<std::string, std::pair<std::vector<int>, ScalarBuffer>>, 3> flresn_;
+    std::array<std::pair<std::string, std::pair<std::vector<int>, ScalarBuffer>>, 3> flowsn_;
 
     std::map<size_t, Scalar> oilConnectionPressures_;
     std::map<size_t, Scalar> waterConnectionSaturations_;
