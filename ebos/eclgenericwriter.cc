@@ -260,6 +260,13 @@ writeInit(const std::function<unsigned int(unsigned int)>& map)
         auto cartMap = cartesianToCompressed(equilGrid_->size(0), UgGridHelpers::globalCell(*equilGrid_));
         eclIO_->writeInitial(computeTrans_(cartMap, map), integerVectors, exportNncStructure_(cartMap, map));
     }
+#if HAVE_MPI
+    if (collectToIORank_.isParallel()) {
+        const auto& comm = grid_.comm();
+        Opm::EclMpiSerializer ser(comm);
+        ser.broadcast(outputNnc_);
+    }
+#endif
 }
 
 template<class Grid, class EquilGrid, class GridView, class ElementMapper, class Scalar>
@@ -465,17 +472,22 @@ doWriteOutput(const int                     reportStepNum,
 
     // Add nnc flows and flres is existing.
     if (isFlowsn) {
-        for (const auto& flows : flowsn) {
+        const auto flowsn_global = isParallel ? this->collectToIORank_.globalFlowsn() : std::move(flowsn);
+        for (const auto& flows : flowsn_global) {
             if (flows.first.empty())
                 continue;
             restartValue.addExtra(flows.first, UnitSystem::measure::rate, flows.second);
         }
     }
     if (isFlresn) {
-        for (const auto& flres : flresn) {
+        const auto flresn_global = isParallel ? this->collectToIORank_.globalFlresn() : std::move(flresn);
+        for (const auto& flres : flresn_global) {
             if (flres.first.empty())
                 continue;
-            restartValue.addExtra(flres.first, UnitSystem::measure::rate, flres.second);
+            if (flres.first == "FLRGASN+")
+                restartValue.addExtra(flres.first, UnitSystem::measure::gas_surface_rate, flres.second);
+            else
+                restartValue.addExtra(flres.first, UnitSystem::measure::liquid_surface_rate, flres.second);
         }
     }
 

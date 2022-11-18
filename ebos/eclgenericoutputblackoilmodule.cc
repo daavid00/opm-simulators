@@ -756,43 +756,43 @@ assignToSolution(data::Solution& sol)
 
     // Flows
     if (FluidSystem::phaseIsActive(gasPhaseIdx) && !flowsi_[gasCompIdx].empty())
-        sol.insert("FLOGASI+", UnitSystem::measure::rate,  flowsi_[gasCompIdx], data::TargetType::RESTART_SOLUTION); 
+        sol.insert("FLOGASI+", UnitSystem::measure::rate, flowsi_[gasCompIdx], data::TargetType::RESTART_SOLUTION); 
     if (FluidSystem::phaseIsActive(gasPhaseIdx) && !flowsj_[gasCompIdx].empty())
-        sol.insert("FLOGASJ+", UnitSystem::measure::rate,  flowsj_[gasCompIdx], data::TargetType::RESTART_SOLUTION);
+        sol.insert("FLOGASJ+", UnitSystem::measure::rate, flowsj_[gasCompIdx], data::TargetType::RESTART_SOLUTION);
     if (FluidSystem::phaseIsActive(gasPhaseIdx) && !flowsk_[gasCompIdx].empty())
-        sol.insert("FLOGASK+", UnitSystem::measure::rate,  flowsk_[gasCompIdx], data::TargetType::RESTART_SOLUTION);
+        sol.insert("FLOGASK+", UnitSystem::measure::rate, flowsk_[gasCompIdx], data::TargetType::RESTART_SOLUTION);
     if (FluidSystem::phaseIsActive(oilPhaseIdx) && !flowsi_[oilCompIdx].empty())
-        sol.insert("FLOOILI+", UnitSystem::measure::rate,  flowsi_[oilCompIdx], data::TargetType::RESTART_SOLUTION);
+        sol.insert("FLOOILI+", UnitSystem::measure::rate, flowsi_[oilCompIdx], data::TargetType::RESTART_SOLUTION);
     if (FluidSystem::phaseIsActive(oilPhaseIdx) && !flowsj_[oilCompIdx].empty())
-        sol.insert("FLOOILJ+", UnitSystem::measure::rate,  flowsj_[oilCompIdx], data::TargetType::RESTART_SOLUTION);
+        sol.insert("FLOOILJ+", UnitSystem::measure::rate, flowsj_[oilCompIdx], data::TargetType::RESTART_SOLUTION);
     if (FluidSystem::phaseIsActive(oilPhaseIdx) && !flowsk_[oilCompIdx].empty())
-        sol.insert("FLOOILK+", UnitSystem::measure::rate,  flowsk_[oilCompIdx], data::TargetType::RESTART_SOLUTION);
+        sol.insert("FLOOILK+", UnitSystem::measure::rate, flowsk_[oilCompIdx], data::TargetType::RESTART_SOLUTION);
     if (FluidSystem::phaseIsActive(waterPhaseIdx) && !flowsi_[waterCompIdx].empty())
-        sol.insert("FLOWATI+", UnitSystem::measure::rate,  flowsi_[waterCompIdx], data::TargetType::RESTART_SOLUTION);
+        sol.insert("FLOWATI+", UnitSystem::measure::rate, flowsi_[waterCompIdx], data::TargetType::RESTART_SOLUTION);
     if (FluidSystem::phaseIsActive(waterPhaseIdx) && !flowsj_[waterCompIdx].empty())
-        sol.insert("FLOWATJ+", UnitSystem::measure::rate,  flowsj_[waterCompIdx], data::TargetType::RESTART_SOLUTION);
+        sol.insert("FLOWATJ+", UnitSystem::measure::rate, flowsj_[waterCompIdx], data::TargetType::RESTART_SOLUTION);
     if (FluidSystem::phaseIsActive(waterPhaseIdx) && !flowsk_[waterCompIdx].empty())
-        sol.insert("FLOWATK+", UnitSystem::measure::rate,  flowsk_[waterCompIdx], data::TargetType::RESTART_SOLUTION);
+        sol.insert("FLOWATK+", UnitSystem::measure::rate, flowsk_[waterCompIdx], data::TargetType::RESTART_SOLUTION);
 
     // Flres
     if (FluidSystem::phaseIsActive(gasPhaseIdx) && !flresi_[gasCompIdx].empty())
-        sol.insert("FLRGASI+", UnitSystem::measure::rate,  flresi_[gasCompIdx], data::TargetType::RESTART_SOLUTION);
+        sol.insert("FLRGASI+", UnitSystem::measure::gas_surface_rate, flresi_[gasCompIdx], data::TargetType::RESTART_SOLUTION);
     if (FluidSystem::phaseIsActive(gasPhaseIdx) && !flresj_[gasCompIdx].empty())
-        sol.insert("FLRGASJ+", UnitSystem::measure::rate,  flresj_[gasCompIdx], data::TargetType::RESTART_SOLUTION);
+        sol.insert("FLRGASJ+", UnitSystem::measure::gas_surface_rate, flresj_[gasCompIdx], data::TargetType::RESTART_SOLUTION);
     if (FluidSystem::phaseIsActive(gasPhaseIdx) && !flresk_[gasCompIdx].empty())
-        sol.insert("FLRGASK+", UnitSystem::measure::rate,  flresk_[gasCompIdx], data::TargetType::RESTART_SOLUTION);
+        sol.insert("FLRGASK+", UnitSystem::measure::gas_surface_rate, flresk_[gasCompIdx], data::TargetType::RESTART_SOLUTION);
     if (FluidSystem::phaseIsActive(oilPhaseIdx) && !flresi_[oilCompIdx].empty())
-        sol.insert("FLROILI+", UnitSystem::measure::rate,  flresi_[oilCompIdx], data::TargetType::RESTART_SOLUTION);
+        sol.insert("FLROILI+", UnitSystem::measure::liquid_surface_rate, flresi_[oilCompIdx], data::TargetType::RESTART_SOLUTION);
     if (FluidSystem::phaseIsActive(oilPhaseIdx) && !flresj_[oilCompIdx].empty())
-        sol.insert("FLROILJ+", UnitSystem::measure::rate,  flresj_[oilCompIdx], data::TargetType::RESTART_SOLUTION);
+        sol.insert("FLROILJ+", UnitSystem::measure::liquid_surface_rate, flresj_[oilCompIdx], data::TargetType::RESTART_SOLUTION);
     if (FluidSystem::phaseIsActive(oilPhaseIdx) && !flresk_[oilCompIdx].empty())
-        sol.insert("FLROILK+", UnitSystem::measure::rate,  flresk_[oilCompIdx], data::TargetType::RESTART_SOLUTION);
+        sol.insert("FLROILK+", UnitSystem::measure::liquid_surface_rate, flresk_[oilCompIdx], data::TargetType::RESTART_SOLUTION);
     if (FluidSystem::phaseIsActive(waterPhaseIdx) && !flresi_[waterCompIdx].empty())
-        sol.insert("FLRWATI+", UnitSystem::measure::rate,  flresi_[waterCompIdx], data::TargetType::RESTART_SOLUTION);
+        sol.insert("FLRWATI+", UnitSystem::measure::liquid_surface_rate, flresi_[waterCompIdx], data::TargetType::RESTART_SOLUTION);
     if (FluidSystem::phaseIsActive(waterPhaseIdx) && !flresj_[waterCompIdx].empty())
-        sol.insert("FLRWATJ+", UnitSystem::measure::rate,  flresj_[waterCompIdx], data::TargetType::RESTART_SOLUTION);
+        sol.insert("FLRWATJ+", UnitSystem::measure::liquid_surface_rate, flresj_[waterCompIdx], data::TargetType::RESTART_SOLUTION);
     if (FluidSystem::phaseIsActive(waterPhaseIdx) && !flresk_[waterCompIdx].empty())
-        sol.insert("FLRWATK+", UnitSystem::measure::rate,  flresk_[waterCompIdx], data::TargetType::RESTART_SOLUTION);
+        sol.insert("FLRWATK+", UnitSystem::measure::liquid_surface_rate, flresk_[waterCompIdx], data::TargetType::RESTART_SOLUTION);
 
 }
 

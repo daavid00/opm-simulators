@@ -222,7 +222,9 @@ public:
                                            localGroupAndNetworkData,
                                            localAquiferData,
                                            localWellTestState,
-                                           this->eclOutputModule_->getInterRegFlows());
+                                           this->eclOutputModule_->getInterRegFlows(),
+                                           {},
+                                           {});
 
             if (this->collectToIORank_.isIORank()) {
                 auto& iregFlows = this->collectToIORank_.globalInterRegFlows();
@@ -352,7 +354,9 @@ public:
                                            localGroupAndNetworkData,
                                            localAquiferData,
                                            localWellTestState,
-                                           {});
+                                           {},
+                                           flowsn,
+                                           flresn);
         }
 
         if (this->collectToIORank_.isIORank()) {
@@ -371,9 +375,9 @@ public:
                                 curTime, nextStepSize,
                                 EWOMS_GET_PARAM(TypeTag, bool, EclOutputDoublePrecision),
                                 isFlowsn,
-                                flowsn,
+                                std::move(flowsn),
                                 isFlresn,
-                                flresn);
+                                std::move(flresn));
         }
     }
 

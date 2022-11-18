@@ -201,9 +201,9 @@ public:
         return enableFlows_;
     }
 
-    const std::array<std::pair<std::string, std::vector<Scalar>>, 3>& getFlresn() const
+    std::array<std::pair<std::string, std::vector<Scalar>>, 3>& getFlresn()
     {
-        return this->flresn_;
+        return flresn_;
     }
 
     bool hasFlresn() const
