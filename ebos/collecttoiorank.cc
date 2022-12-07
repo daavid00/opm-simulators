@@ -851,11 +851,10 @@ public:
             globalFlowsn_[i].first = name;
             unsigned int size = 0;
             buffer.read(size);
-            globalFlowsn_[i].second.resize(size, 0.0);
             for (unsigned int j = 0; j < size; ++j) {
                 double data;
                 buffer.read(data);
-                globalFlowsn_[i].second[j] = data;
+                globalFlowsn_[i].second[j] += data;
             }
         }
     }
@@ -907,11 +906,10 @@ public:
             globalFlresn_[i].first = name;
             unsigned int size = 0;
             buffer.read(size);
-            globalFlresn_[i].second.resize(size, 0.0);
             for (unsigned int j = 0; j < size; ++j) {
                 double data;
                 buffer.read(data);
-                globalFlresn_[i].second[j] = data;
+                globalFlresn_[i].second[j] += data;
             }
         }
     }
@@ -1063,6 +1061,14 @@ collect(const data::Solution& localCellData,
     this->globalInterRegFlows_.clear();
     globalFlowsn_ = {};
     globalFlresn_ = {};
+
+    // Set the right sizes for Flowsn and Flresn when needed
+    for (int i = 0; i < 3; ++i) {
+        unsigned int sizeFlr = localFlresn[i].second.size();
+        globalFlresn_[i].second.resize(sizeFlr, 0.0);
+        unsigned int sizeFlo = localFlowsn[i].second.size();
+        globalFlowsn_[i].second.resize(sizeFlo, 0.0);
+    }
 
     // index maps only have to be build when reordering is needed
     if(!needsReordering && !isParallel())
