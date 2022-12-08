@@ -854,7 +854,7 @@ public:
             for (unsigned int j = 0; j < size; ++j) {
                 double data;
                 buffer.read(data);
-                globalFlowsn_[i].second[j] += data;
+                globalFlowsn_[i].second[size - 1 - j] += data;
             }
         }
     }
@@ -909,7 +909,7 @@ public:
             for (unsigned int j = 0; j < size; ++j) {
                 double data;
                 buffer.read(data);
-                globalFlresn_[i].second[j] += data;
+                globalFlresn_[i].second[size - 1 - j] += data;
             }
         }
     }
