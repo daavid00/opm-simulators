@@ -1116,7 +1116,8 @@ doAllocBuffers(unsigned bufferSize,
             if (numOutputNnc > 0){
                 enableFlowsn_ = true;
                 flowsn_[gasCompIdx].first = "FLOGASN+";
-                flowsn_[gasCompIdx].second.resize(numOutputNnc, 0.0);
+                flowsn_[gasCompIdx].second.first.resize(numOutputNnc, -1);
+                flowsn_[gasCompIdx].second.second.resize(numOutputNnc, 0.0);
             }
         }
         if (FluidSystem::phaseIsActive(oilPhaseIdx)){
@@ -1129,7 +1130,8 @@ doAllocBuffers(unsigned bufferSize,
             if (numOutputNnc > 0){
                 enableFlowsn_ = true;
                 flowsn_[oilCompIdx].first = "FLOOILN+";
-                flowsn_[oilCompIdx].second.resize(numOutputNnc, 0.0);
+                flowsn_[oilCompIdx].second.first.resize(numOutputNnc, -1);
+                flowsn_[oilCompIdx].second.second.resize(numOutputNnc, 0.0);
             }
         }
         if (FluidSystem::phaseIsActive(waterPhaseIdx)){
@@ -1142,7 +1144,8 @@ doAllocBuffers(unsigned bufferSize,
             if (numOutputNnc > 0){
                 enableFlowsn_ = true;
                 flowsn_[waterCompIdx].first = "FLOWATN+";
-                flowsn_[waterCompIdx].second.resize(numOutputNnc, 0.0);
+                flowsn_[waterCompIdx].second.first.resize(numOutputNnc, -1);
+                flowsn_[waterCompIdx].second.second.resize(numOutputNnc, 0.0);
             }
         }
     }
@@ -1160,7 +1163,8 @@ doAllocBuffers(unsigned bufferSize,
             if (numOutputNnc > 0){
                 enableFlresn_ = true;
                 flresn_[gasCompIdx].first = "FLRGASN+";
-                flresn_[gasCompIdx].second.resize(numOutputNnc, 0.0);
+                flresn_[gasCompIdx].second.first.resize(numOutputNnc, -1);
+                flresn_[gasCompIdx].second.second.resize(numOutputNnc, 0.0);
             }
         }
         if (FluidSystem::phaseIsActive(oilPhaseIdx)){
@@ -1173,7 +1177,8 @@ doAllocBuffers(unsigned bufferSize,
             if (numOutputNnc > 0){
                 enableFlresn_ = true;
                 flresn_[oilCompIdx].first = "FLROILN+";
-                flresn_[oilCompIdx].second.resize(numOutputNnc, 0.0);
+                flresn_[oilCompIdx].second.first.resize(numOutputNnc, -1);
+                flresn_[oilCompIdx].second.second.resize(numOutputNnc, 0.0);
             }
         }
         if (FluidSystem::phaseIsActive(waterPhaseIdx)){
@@ -1186,7 +1191,8 @@ doAllocBuffers(unsigned bufferSize,
             if (numOutputNnc > 0){
                 enableFlresn_ = true;
                 flresn_[waterCompIdx].first = "FLRWATN+";
-                flresn_[waterCompIdx].second.resize(numOutputNnc, 0.0);
+                flresn_[waterCompIdx].second.first.resize(numOutputNnc, -1);
+                flresn_[waterCompIdx].second.second.resize(numOutputNnc, 0.0);
             }
         }
     }

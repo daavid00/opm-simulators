@@ -186,7 +186,7 @@ public:
         return 0;
     }
 
-    const std::array<std::pair<std::string, std::vector<Scalar>>, 3>& getFlowsn() const
+    const std::array<std::pair<std::string, std::pair<std::vector<int>, std::vector<double>>>, 3>& getFlowsn() const
     {
         return this->flowsn_;
     }
@@ -201,9 +201,9 @@ public:
         return enableFlows_;
     }
 
-    std::array<std::pair<std::string, std::vector<Scalar>>, 3>& getFlresn()
+    const std::array<std::pair<std::string, std::pair<std::vector<int>, std::vector<double>>>, 3>& getFlresn() const
     {
-        return flresn_;
+        return this->flresn_;
     }
 
     bool hasFlresn() const
@@ -509,8 +509,8 @@ protected:
     std::array<ScalarBuffer, numPhases> flresj_;
     std::array<ScalarBuffer, numPhases> flresk_;
 
-    std::array<std::pair<std::string, ScalarBuffer>, 3> flresn_;
-    std::array<std::pair<std::string, ScalarBuffer>, 3> flowsn_;
+    std::array<std::pair<std::string, std::pair<std::vector<int>, ScalarBuffer>>, 3> flresn_;
+    std::array<std::pair<std::string, std::pair<std::vector<int>, ScalarBuffer>>, 3> flowsn_;
 
     std::map<size_t, Scalar> oilConnectionPressures_;
     std::map<size_t, Scalar> waterConnectionSaturations_;

@@ -734,12 +734,18 @@ public:
                             this->flowsk_[waterCompIdx][globalDofIdx] = flowInfo.flow[Indices::canonicalToActiveComponentIndex(waterCompIdx)];
                     }
                     if (flowInfo.faceId == -2){
-                        if (FluidSystem::phaseIsActive(gasPhaseIdx) & !this->flowsn_[gasCompIdx].second.empty())
-                            this->flowsn_[gasCompIdx].second[flowInfo.nncId] = flowInfo.flow[Indices::canonicalToActiveComponentIndex(gasCompIdx)];
-                        if (FluidSystem::phaseIsActive(oilPhaseIdx) & !this->flowsn_[oilCompIdx].second.empty())
-                            this->flowsn_[oilCompIdx].second[flowInfo.nncId] = flowInfo.flow[Indices::canonicalToActiveComponentIndex(oilCompIdx)];
-                        if (FluidSystem::phaseIsActive(waterPhaseIdx) & !this->flowsn_[waterCompIdx].second.empty())
-                            this->flowsn_[waterCompIdx].second[flowInfo.nncId] = flowInfo.flow[Indices::canonicalToActiveComponentIndex(waterCompIdx)];
+                        if (FluidSystem::phaseIsActive(gasPhaseIdx) & !this->flowsn_[gasCompIdx].second.first.empty()) {
+                            this->flowsn_[gasCompIdx].second.first[flowInfo.nncId] = flowInfo.nncId;
+                            this->flowsn_[gasCompIdx].second.second[flowInfo.nncId] = flowInfo.flow[Indices::canonicalToActiveComponentIndex(gasCompIdx)];
+                            }
+                        if (FluidSystem::phaseIsActive(oilPhaseIdx) & !this->flowsn_[oilCompIdx].second.first.empty()) {
+                            this->flowsn_[oilCompIdx].second.first[flowInfo.nncId] = flowInfo.nncId;
+                            this->flowsn_[oilCompIdx].second.second[flowInfo.nncId] = flowInfo.flow[Indices::canonicalToActiveComponentIndex(oilCompIdx)];
+                            }
+                        if (FluidSystem::phaseIsActive(waterPhaseIdx) & !this->flowsn_[waterCompIdx].second.first.empty()) {
+                            this->flowsn_[waterCompIdx].second.first[flowInfo.nncId] = flowInfo.nncId;
+                            this->flowsn_[waterCompIdx].second.second[flowInfo.nncId] = flowInfo.flow[Indices::canonicalToActiveComponentIndex(waterCompIdx)];
+                            }
                     }
                 }
             }
@@ -774,12 +780,18 @@ public:
                             this->flresk_[waterCompIdx][globalDofIdx] = flreInfo.flow[waterPhaseIdx];
                     }
                     if (flreInfo.faceId == -2){
-                        if (FluidSystem::phaseIsActive(gasPhaseIdx) & !this->flresn_[gasCompIdx].second.empty())
-                            this->flresn_[gasCompIdx].second[flreInfo.nncId] = flreInfo.flow[gasPhaseIdx];
-                        if (FluidSystem::phaseIsActive(oilPhaseIdx) & !this->flresn_[oilCompIdx].second.empty())
-                            this->flresn_[oilCompIdx].second[flreInfo.nncId] = flreInfo.flow[oilPhaseIdx];
-                        if (FluidSystem::phaseIsActive(waterPhaseIdx) & !this->flresn_[waterCompIdx].second.empty())
-                            this->flresn_[waterCompIdx].second[flreInfo.nncId] = flreInfo.flow[waterPhaseIdx];
+                        if (FluidSystem::phaseIsActive(gasPhaseIdx) & !this->flresn_[gasCompIdx].second.first.empty()) {
+                            this->flresn_[gasCompIdx].second.first[flreInfo.nncId] = flreInfo.nncId;
+                            this->flresn_[gasCompIdx].second.second[flreInfo.nncId] = flreInfo.flow[gasPhaseIdx];
+                            }
+                        if (FluidSystem::phaseIsActive(oilPhaseIdx) & !this->flresn_[oilCompIdx].second.first.empty()) {
+                            this->flresn_[oilCompIdx].second.first[flreInfo.nncId] = flreInfo.nncId;
+                            this->flresn_[oilCompIdx].second.second[flreInfo.nncId] = flreInfo.flow[oilPhaseIdx];
+                            }
+                        if (FluidSystem::phaseIsActive(waterPhaseIdx) & !this->flresn_[waterCompIdx].second.first.empty()) {
+                            this->flresn_[waterCompIdx].second.first[flreInfo.nncId] = flreInfo.nncId;
+                            this->flresn_[waterCompIdx].second.second[flreInfo.nncId] = flreInfo.flow[waterPhaseIdx];
+                            }
                     }
                 }
             }

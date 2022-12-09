@@ -128,9 +128,9 @@ protected:
                        Scalar nextStepSize,
                        bool doublePrecision,
                        bool isFlowsn,
-                       const std::array<std::pair<std::string, std::vector<Scalar>>, 3>& flowsn,
+                       const std::array<std::pair<std::string, std::pair<std::vector<int>, std::vector<double>>>, 3>& flowsn,
                        bool isFlresn,
-                       const std::array<std::pair<std::string, std::vector<Scalar>>, 3>& flresn);
+                       const std::array<std::pair<std::string, std::pair<std::vector<int>, std::vector<double>>>, 3>& flresn);
 
     void evalSummary(int reportStepNum,
                      Scalar curTime,

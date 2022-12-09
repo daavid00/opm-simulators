@@ -357,8 +357,10 @@ exportNncStructure_(const std::unordered_map<int,int>& cartesianToActive, const 
         if (cellDiff != 1 && cellDiff != nx && cellDiff != nx*ny) {
             auto tt = unitSystem.from_si(UnitSystem::measure::transmissibility, entry.trans);
             // Eclipse ignores NNCs (with EDITNNC applied) that are small. Seems like the threshold is 1.0e-6
-            if ( tt >= 1.0e-6 )
-                outputNnc_.emplace_back(entry.cell1, entry.cell2, entry.trans);
+            if ( tt >= 1.0e-6 ){
+                unsigned int nncIdx = outputNnc_.size();
+                outputNnc_.emplace_back(entry.cell1, entry.cell2, entry.trans, nncIdx);
+            }
         }
         ++index;
     }
@@ -403,7 +405,7 @@ exportNncStructure_(const std::unordered_map<int,int>& cartesianToActive, const 
                 // We need to check whether an NNC for this face was also specified
                 // via the NNC keyword in the deck (i.e. in the first origNncSize entries.
                 auto t = globalTrans().transmissibility(c1, c2);
-                auto candidate = std::lower_bound(nncData.begin(), nncData.end(), NNCdata(cc1, cc2, 0.0));
+                auto candidate = std::lower_bound(nncData.begin(), nncData.end(), NNCdata(cc1, cc2, 0.0, 0));
 
                 while ( candidate != nncData.end() && candidate->cell1 == cc1
                      && candidate->cell2 == cc2) {
@@ -414,8 +416,10 @@ exportNncStructure_(const std::unordered_map<int,int>& cartesianToActive, const 
                 // with corresponding EDITNNC above). In addition we do set small transmissibilties
                 // to zero when setting up the simulator. These will be ignored here, too.
                 auto tt = unitSystem.from_si(UnitSystem::measure::transmissibility, std::abs(t));
-                if ( tt > 1e-12 )
-                    outputNnc_.push_back({cc1, cc2, t});
+                if ( tt > 1e-12 ){
+                    unsigned int nncIdx = outputNnc_.size();
+                    outputNnc_.push_back({cc1, cc2, t, nncIdx});
+                }
             }
         }
     }
@@ -439,9 +443,9 @@ doWriteOutput(const int                     reportStepNum,
               Scalar nextStepSize,
               bool doublePrecision,
               bool isFlowsn,
-              const std::array<std::pair<std::string, std::vector<Scalar>>, 3>& flowsn,
+              const std::array<std::pair<std::string, std::pair<std::vector<int>, std::vector<double>>>, 3>& flowsn,
               bool isFlresn,
-              const std::array<std::pair<std::string, std::vector<Scalar>>, 3>& flresn)
+              const std::array<std::pair<std::string, std::pair<std::vector<int>, std::vector<double>>>, 3>& flresn)
 {
     const auto isParallel = this->collectToIORank_.isParallel();
     const bool needsReordering = this->collectToIORank_.doesNeedReordering();
@@ -476,7 +480,7 @@ doWriteOutput(const int                     reportStepNum,
         for (const auto& flows : flowsn_global) {
             if (flows.first.empty())
                 continue;
-            restartValue.addExtra(flows.first, UnitSystem::measure::rate, flows.second);
+            restartValue.addExtra(flows.first, UnitSystem::measure::rate, flows.second.second);
         }
     }
     if (isFlresn) {
@@ -485,9 +489,9 @@ doWriteOutput(const int                     reportStepNum,
             if (flres.first.empty())
                 continue;
             if (flres.first == "FLRGASN+")
-                restartValue.addExtra(flres.first, UnitSystem::measure::gas_surface_rate, flres.second);
+                restartValue.addExtra(flres.first, UnitSystem::measure::gas_surface_rate, flres.second.second);
             else
-                restartValue.addExtra(flres.first, UnitSystem::measure::liquid_surface_rate, flres.second);
+                restartValue.addExtra(flres.first, UnitSystem::measure::liquid_surface_rate, flres.second.second);
         }
     }
 
