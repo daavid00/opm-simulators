@@ -5,10 +5,10 @@ set (opm-simulators_CONFIG_VAR
   HAVE_EWOMS
   HAVE_MPI
   HAVE_PETSC
+  COMPILE_BDA_BRIDGE
   HAVE_CUDA
   HAVE_OPENCL
   HAVE_OPENCL_HPP
-  HAVE_FPGA
   HAVE_AMGCL
   HAVE_VEXCL
   HAVE_ROCALUTION
@@ -45,7 +45,6 @@ set (opm-simulators_DEPS
   "rocalution"
   # OPM dependency
   "opm-common REQUIRED"
-  "opm-material REQUIRED"
   "opm-grid REQUIRED"
   "opm-models REQUIRED"
   "Damaris 1.7"

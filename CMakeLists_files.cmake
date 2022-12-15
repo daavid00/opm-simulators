@@ -41,11 +41,11 @@ list (APPEND MAIN_SOURCE_FILES
   opm/core/props/satfunc/RelpermDiagnostics.cpp
   opm/simulators/timestepping/SimulatorReport.cpp
   opm/simulators/flow/countGlobalCells.cpp
+  opm/simulators/flow/ConvergenceOutputConfiguration.cpp
   opm/simulators/flow/KeywordValidation.cpp
   opm/simulators/flow/SimulatorFullyImplicitBlackoilEbos.cpp
   opm/simulators/flow/ValidationFunctions.cpp
   opm/simulators/linalg/bda/WellContributions.cpp
-  opm/simulators/linalg/bda/Matrix.cpp
   opm/simulators/linalg/bda/MultisegmentWellContribution.cpp
   opm/simulators/linalg/ExtractParallelGridInformationToISTL.cpp
   opm/simulators/linalg/FlexibleSolver1.cpp
@@ -91,14 +91,19 @@ list (APPEND MAIN_SOURCE_FILES
   opm/simulators/wells/GlobalWellInfo.cpp
   opm/simulators/wells/GroupState.cpp
   opm/simulators/wells/MSWellHelpers.cpp
+  opm/simulators/wells/MultisegmentWellAssemble.cpp
+  opm/simulators/wells/MultisegmentWellEquations.cpp
   opm/simulators/wells/MultisegmentWellEval.cpp
   opm/simulators/wells/MultisegmentWellGeneric.cpp
   opm/simulators/wells/ParallelWellInfo.cpp
   opm/simulators/wells/PerfData.cpp
   opm/simulators/wells/SegmentState.cpp
   opm/simulators/wells/SingleWellState.cpp
+  opm/simulators/wells/StandardWellAssemble.cpp
+  opm/simulators/wells/StandardWellConnections.cpp
+  opm/simulators/wells/StandardWellEquations.cpp
   opm/simulators/wells/StandardWellEval.cpp
-  opm/simulators/wells/StandardWellGeneric.cpp
+  opm/simulators/wells/StandardWellPrimaryVariables.cpp
   opm/simulators/wells/TargetCalculator.cpp
   opm/simulators/wells/VFPHelpers.cpp
   opm/simulators/wells/VFPProdProperties.cpp
@@ -146,13 +151,8 @@ endif()
 if(ROCALUTION_FOUND)
   list (APPEND MAIN_SOURCE_FILES opm/simulators/linalg/bda/rocalutionSolverBackend.cpp)
 endif()
-if(CUDA_FOUND OR OPENCL_FOUND OR HAVE_FPGA OR amgcl_FOUND OR ROCALUTION_FOUND)
+if(COMPILE_BDA_BRIDGE)
   list (APPEND MAIN_SOURCE_FILES opm/simulators/linalg/bda/BdaBridge.cpp)
-endif()
-if(HAVE_FPGA)
-  list (APPEND MAIN_SOURCE_FILES opm/simulators/linalg/bda/FPGABILU0.cpp)
-  list (APPEND MAIN_SOURCE_FILES opm/simulators/linalg/bda/FPGASolverBackend.cpp)
-  list (APPEND MAIN_SOURCE_FILES opm/simulators/linalg/bda/FPGAUtils.cpp)
 endif()
 if(amgcl_FOUND)
   list (APPEND MAIN_SOURCE_FILES opm/simulators/linalg/bda/amgclSolverBackend.cpp)
@@ -172,9 +172,9 @@ endif()
 list (APPEND TEST_SOURCE_FILES
   tests/test_ALQState.cpp
   tests/test_blackoil_amg.cpp
+  tests/test_convergenceoutputconfiguration.cpp
   tests/test_convergencereport.cpp
   tests/test_deferredlogger.cpp
-  tests/test_ecl_output.cc
   tests/test_eclinterregflows.cpp
   tests/test_equil.cc
   tests/test_flexiblesolver.cpp
@@ -214,7 +214,6 @@ if(ROCALUTION_FOUND)
 endif()
 
 list (APPEND TEST_DATA_FILES
-  tests/SUMMARY_DECK_NON_CONSTANT_POROSITY.DATA
   tests/equil_base.DATA
   tests/equil_capillary.DATA
   tests/equil_capillary_overlap.DATA
@@ -274,6 +273,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/simulators/flow/countGlobalCells.hpp
   opm/simulators/flow/BlackoilModelEbos.hpp
   opm/simulators/flow/BlackoilModelParametersEbos.hpp
+  opm/simulators/flow/ConvergenceOutputConfiguration.hpp
   opm/simulators/flow/FlowMainEbos.hpp
   opm/simulators/flow/Main.hpp
   opm/simulators/flow/NonlinearSolverEbos.hpp
@@ -304,9 +304,6 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/simulators/linalg/bda/cuda/cusparseSolverBackend.hpp
   opm/simulators/linalg/bda/opencl/ChowPatelIlu.hpp
   opm/simulators/linalg/bda/opencl/BISAI.hpp
-  opm/simulators/linalg/bda/FPGABILU0.hpp
-  opm/simulators/linalg/bda/FPGASolverBackend.hpp
-  opm/simulators/linalg/bda/FPGAUtils.hpp
   opm/simulators/linalg/bda/Reorder.hpp
   opm/simulators/linalg/bda/opencl/opencl.hpp
   opm/simulators/linalg/bda/opencl/openclKernels.hpp
@@ -379,6 +376,10 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/simulators/wells/MSWellHelpers.hpp
   opm/simulators/wells/MultisegmentWell.hpp
   opm/simulators/wells/MultisegmentWell_impl.hpp
+  opm/simulators/wells/MultisegmentWellAssemble.hpp
+  opm/simulators/wells/MultisegmentWellEquations.hpp
+  opm/simulators/wells/MultisegmentWellEval.hpp
+  opm/simulators/wells/MultisegmentWellGeneric.hpp
   opm/simulators/wells/ParallelWellInfo.hpp
   opm/simulators/wells/PerfData.hpp
   opm/simulators/wells/PerforationData.hpp
@@ -389,6 +390,11 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/simulators/wells/SingleWellState.hpp
   opm/simulators/wells/StandardWell.hpp
   opm/simulators/wells/StandardWell_impl.hpp
+  opm/simulators/wells/StandardWellAssemble.hpp
+  opm/simulators/wells/StandardWellConnections.hpp
+  opm/simulators/wells/StandardWellEquations.hpp
+  opm/simulators/wells/StandardWellEval.hpp
+  opm/simulators/wells/StandardWellPrimaryVariables.hpp
   opm/simulators/wells/TargetCalculator.hpp
   opm/simulators/wells/VFPHelpers.hpp
   opm/simulators/wells/VFPInjProperties.hpp
