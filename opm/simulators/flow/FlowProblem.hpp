@@ -146,6 +146,7 @@ class FlowProblem : public GetPropType<TypeTag, Properties::BaseProblem>
     enum { enableThermalFluxBoundaries = getPropValue<TypeTag, Properties::EnableThermalFluxBoundaries>() };
     enum { enableApiTracking = getPropValue<TypeTag, Properties::EnableApiTracking>() };
     enum { enableMICP = getPropValue<TypeTag, Properties::EnableMICP>() };
+    enum { enableMicrobes = getPropValue<TypeTag, Properties::EnableMicrobes>() };
     enum { gasPhaseIdx = FluidSystem::gasPhaseIdx };
     enum { oilPhaseIdx = FluidSystem::oilPhaseIdx };
     enum { waterPhaseIdx = FluidSystem::waterPhaseIdx };
@@ -178,6 +179,7 @@ class FlowProblem : public GetPropType<TypeTag, Properties::BaseProblem>
     using BrineModule = BlackOilBrineModule<TypeTag>;
     using ExtboModule = BlackOilExtboModule<TypeTag>;
     using MICPModule = BlackOilMICPModule<TypeTag>;
+    using MicrobesModule = BlackOilMicrobesModule<TypeTag>;
     using DispersionModule = BlackOilDispersionModule<TypeTag, enableDispersion>;
     using DiffusionModule = BlackOilDiffusionModule<TypeTag, enableDiffusion>;
 
@@ -301,6 +303,7 @@ public:
         BrineModule::initFromState(vanguard.eclState());
         ExtboModule::initFromState(vanguard.eclState());
         MICPModule::initFromState(vanguard.eclState());
+        MicrobesModule::initFromState(vanguard.eclState());
         DispersionModule::initFromState(vanguard.eclState());
         DiffusionModule::initFromState(vanguard.eclState());
 
@@ -1363,6 +1366,10 @@ public:
             values[Indices::biofilmConcentrationIdx]= this->micp_.biofilmConcentration[globalDofIdx];
         }
 
+        if constexpr (enableMicrobes) {
+            values[Indices::bacteriaConcentrationIdx] = this->bacteriaConcentration_[globalDofIdx];
+        }
+
         values.checkDefined();
     }
 
@@ -1780,6 +1787,26 @@ public:
     }
 
     /*!
+     * \brief Calculate the transmissibility multiplier due to porosity reduction.
+     *
+     * TODO: The API of this is a bit ad-hoc, it would be better to use context objects.
+     */
+    template <class LhsEval>
+    LhsEval permPoroTransMultiplier(const IntensiveQuantities& intQuants, unsigned elementIdx) const
+    {
+        OPM_TIMEBLOCK_LOCAL(permPoroTransMultiplier);
+        if (!enableMicrobes)
+            return 1.0;
+        
+        const auto& fs = intQuants.fluidState();
+        const int satid = this->materialLawManager()->satnumRegionIdx(elementIdx);
+        LhsEval porFactor = decay<LhsEval>(1. - intQuants.bacteriaConcentration());
+        porFactor = min(porFactor, 1.0);
+        const auto& permporoTable = MicrobesModule::permporoTable(satid);
+        return permporoTable.eval(porFactor, /*extrapolation=*/true);
+    }
+
+    /*!
      * \brief Return the well transmissibility multiplier due to rock changues.
      */
     template <class LhsEval>
@@ -1791,6 +1818,7 @@ public:
         double trans_mult = implicit ? this->simulator().problem().template computeRockCompTransMultiplier_<double>(intQuants, elementIdx)
                                      : this->simulator().problem().getRockCompTransMultVal(elementIdx);
         trans_mult *= this->simulator().problem().template permFactTransMultiplier<double>(intQuants);
+        trans_mult *= this->simulator().problem().template permPoroTransMultiplier<double>(intQuants, elementIdx);
     
         return trans_mult;
     }
@@ -2158,12 +2186,13 @@ protected:
         else
             readExplicitInitialCondition_();
 
-        if constexpr (enableSolvent || enablePolymer || enablePolymerMolarWeight || enableMICP)
+        if constexpr (enableSolvent || enablePolymer || enablePolymerMolarWeight || enableMICP || enableMicrobes)
             this->readBlackoilExtentionsInitialConditions_(this->model().numGridDof(),
                                                            enableSolvent,
                                                            enablePolymer,
                                                            enablePolymerMolarWeight,
-                                                           enableMICP);
+                                                           enableMICP,
+                                                           enableMicrobes);
 
         //initialize min/max values
         std::size_t numElems = this->model().numGridDof();
@@ -2243,6 +2272,11 @@ protected:
             this->micp_.resize(numElems);
         }
 
+        if constexpr (enableMicrobes) {
+            this->bacteriaConcentration_.resize(numElems, 0.0);
+            this->biofilmDensity_.resize(numElems, 0.0);
+        }
+
         for (std::size_t elemIdx = 0; elemIdx < numElems; ++elemIdx) {
             auto& elemFluidState = initialFluidStates_[elemIdx];
             elemFluidState.setPvtRegionIndex(pvtRegionIndex(elemIdx));
@@ -2287,6 +2321,8 @@ protected:
                  this->micp_.biofilmConcentration[elemIdx] = eclWriter_->outputModule().getBiofilmConcentration(elemIdx);
                  this->micp_.calciteConcentration[elemIdx] = eclWriter_->outputModule().getCalciteConcentration(elemIdx);
             }
+            if constexpr (enableMicrobes)
+                 this->bacteriaConcentration_[elemIdx] = eclWriter_->outputModule().getBacteriaConcentration(elemIdx);
             // if we need to restart for polymer molecular weight simulation, we need to add related here
         }
 
