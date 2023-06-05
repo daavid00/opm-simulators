@@ -63,7 +63,8 @@ public:
                                          getPropValue<TypeTag, Properties::EnableBrine>(),
                                          /*PVOffset=*/0,
                                          /*enabledCompIdx=*/FluidSystem::waterCompIdx,
-                                         getPropValue<TypeTag, Properties::EnableMICP>()>;
+                                         getPropValue<TypeTag, Properties::EnableMICP>(),
+                                         getPropValue<TypeTag, Properties::EnableMicrobes>()>;
 };
 
 } // namespace Opm::Properties

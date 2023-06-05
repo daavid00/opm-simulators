@@ -493,7 +493,8 @@ readBlackoilExtentionsInitialConditions_(std::size_t numDof,
                                          bool enableSolvent,
                                          bool enablePolymer,
                                          bool enablePolymerMolarWeight,
-                                         bool enableMICP)
+                                         bool enableMICP,
+                                         bool enableMicrobes)
 {
     if (enableSolvent) {
         if (eclState_.fieldProps().has_double("SSOL"))
@@ -550,6 +551,41 @@ readBlackoilExtentionsInitialConditions_(std::size_t numDof,
             micp_.calciteConcentration.resize(numDof, 0.0);
         }
     }
+    if (enableMicrobes) {
+        biofilmDensity_.resize(numDof, 0.0);
+        if (eclState_.fieldProps().has_double("SBACT")){
+            bacteriaConcentration_ = eclState_.fieldProps().get_double("SBACT");
+            const auto& bactpara = eclState_.getTableManager().getBactpara();
+            for (std::size_t elemIdx = 0; elemIdx < numDof; ++elemIdx) {
+                const auto& indx = satnum_[elemIdx];
+                biofilmDensity_[elemIdx] = bactpara[indx].biofilm_density;
+            }
+        }
+        else
+            bacteriaConcentration_.resize(numDof, 0.0);
+    }
+}
+
+template<class GridView, class FluidSystem>
+typename FlowGenericProblem<GridView,FluidSystem>::Scalar
+FlowGenericProblem<GridView,FluidSystem>::
+biofilmDensity(unsigned globalDofIdx) const
+{
+    if (biofilmDensity_.empty())
+        return 0.0;
+
+    return biofilmDensity_[globalDofIdx];
+}
+
+template<class GridView, class FluidSystem>
+typename FlowGenericProblem<GridView,FluidSystem>::Scalar
+FlowGenericProblem<GridView,FluidSystem>::
+bacteriaConcentration(unsigned globalDofIdx) const
+{
+    if (bacteriaConcentration_.empty())
+        return 0.0;
+
+    return bacteriaConcentration_[globalDofIdx];
 }
 
 template<class GridView, class FluidSystem>

@@ -66,7 +66,8 @@ public:
                                          getPropValue<TypeTag, Properties::EnableBrine>(),
                                          /*PVOffset=*/0,
                                          /*disabledCompIdx=*/FluidSystem::gasCompIdx,
-                                         getPropValue<TypeTag, Properties::EnableMICP>()>;
+                                         getPropValue<TypeTag, Properties::EnableMICP>(),
+                                         getPropValue<TypeTag, Properties::EnableMicrobes>()>;
 };
 }}
 

@@ -53,6 +53,7 @@
 #include <flow/flow_oilwater_polymer.hpp>
 #include <flow/flow_oilwater_polymer_injectivity.hpp>
 #include <flow/flow_micp.hpp>
+#include <flow/flow_microbes.hpp>
 
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 
@@ -217,6 +218,11 @@ private:
         // Single-phase case
         if (rspec.micp()) {
             return this->runMICP(phases);
+        }
+
+        // Microbes module require two-phase oil-gas
+        if (rspec.microbes()) {
+            return this->runMicrobes(phases);
         }
 
         // water-only case
@@ -477,6 +483,19 @@ private:
                             this->argv_,
                             this->outputCout_,
                             this->outputFiles_);
+    }
+
+    int runMicrobes(const Phases& phases)
+    {
+        if (!(phases.active(Phase::WATER) && phases.active(Phase::GAS)) || (phases.size() > 2)) {
+            if (outputCout_) {
+                std::cerr << "MICROBES option can only be used for two-phase water/gas model (i.e. in "
+                          << "combination with WATER and GAS)." << std::endl;
+            }
+
+            return EXIT_FAILURE;
+        }
+        return flowMicrobesMain(argc_, argv_, outputCout_, outputFiles_);
     }
 
     int runTwoPhase(const Phases& phases)

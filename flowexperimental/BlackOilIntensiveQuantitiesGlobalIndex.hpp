@@ -49,6 +49,7 @@
 #include <opm/models/blackoil/blackoilenergymodules.hh>
 #include <opm/models/blackoil/blackoildiffusionmodule.hh>
 #include <opm/models/blackoil/blackoilmicpmodules.hh>
+#include <opm/models/blackoil/blackoilmicrobesmodule.hh>
 #include <opm/models/common/directionalmobility.hh>
 
 #include <opm/utility/CopyablePtr.hpp>
@@ -78,6 +79,7 @@ class BlackOilIntensiveQuantitiesGlobalIndex
     , public BlackOilBrineIntensiveQuantities<TypeTag>
     , public BlackOilEnergyIntensiveQuantitiesGlobalIndex<TypeTag>
     , public BlackOilMICPIntensiveQuantities<TypeTag>
+    , public BlackOilMicrobesIntensiveQuantities<TypeTag>
 {
     using ParentType = GetPropType<TypeTag, Properties::DiscIntensiveQuantities>;
     using Implementation = GetPropType<TypeTag, Properties::IntensiveQuantities>;
@@ -104,6 +106,7 @@ class BlackOilIntensiveQuantitiesGlobalIndex
     enum { enableEnergy = getPropValue<TypeTag, Properties::EnableEnergy>() };
     enum { enableDiffusion = getPropValue<TypeTag, Properties::EnableDiffusion>() };
     enum { enableMICP = getPropValue<TypeTag, Properties::EnableMICP>() };
+    enum { enableMicrobes = getPropValue<TypeTag, Properties::EnableMicrobes>() };
     enum { numPhases = getPropValue<TypeTag, Properties::NumPhases>() };
     enum { numComponents = getPropValue<TypeTag, Properties::NumComponents>() };
     enum { waterCompIdx = FluidSystem::waterCompIdx };
@@ -520,6 +523,7 @@ private:
     friend BlackOilFoamIntensiveQuantities<TypeTag>;
     friend BlackOilBrineIntensiveQuantities<TypeTag>;
     friend BlackOilMICPIntensiveQuantities<TypeTag>;
+    friend BlackOilMicrobesIntensiveQuantities<TypeTag>;
 
     Implementation& asImp_()
     { return *static_cast<Implementation*>(this); }

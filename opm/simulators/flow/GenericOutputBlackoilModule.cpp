@@ -151,6 +151,12 @@ std::string EclString(const Opm::Inplace::Phase phase)
     case Opm::Inplace::Phase::CO2MassInGasPhaseEffectiveUnTrapped:
         return "GMUS";
 
+    case Opm::Inplace::Phase::BiofilmMass:
+        return "BIP";
+
+    case Opm::Inplace::Phase::WaterMass:
+        return "WMIP";
+
     default:
         throw std::logic_error {
             fmt::format("Phase enum with integer value: "
@@ -197,7 +203,8 @@ GenericOutputBlackoilModule(const EclipseState& eclState,
                             bool enableBrine,
                             bool enableSaltPrecipitation,
                             bool enableExtbo,
-                            bool enableMICP)
+                            bool enableMICP,
+                            bool enableMicrobes)
     : eclState_(eclState)
     , schedule_(schedule)
     , summaryState_(summaryState)
@@ -216,6 +223,7 @@ GenericOutputBlackoilModule(const EclipseState& eclState,
     , enableSaltPrecipitation_(enableSaltPrecipitation)
     , enableExtbo_(enableExtbo)
     , enableMICP_(enableMICP)
+    , enableMicrobes_(enableMicrobes)
     , local_data_valid_(false)
 {
     const auto& fp = eclState_.fieldProps();
@@ -536,7 +544,9 @@ assignToSolution(data::Solution& sol)
     };
 
     const auto extendedSolutionArrays = std::array {
+        DataEntry{"BACTERIA", UnitSystem::measure::density,            cBacteria_},
         DataEntry{"BIOFILM",  UnitSystem::measure::identity,           cBiofilm_},
+        DataEntry{"BIOFMASS", UnitSystem::measure::density,            cBiofMass_},
         DataEntry{"CALCITE",  UnitSystem::measure::identity,           cCalcite_},
         DataEntry{"DELSTRXX", UnitSystem::measure::pressure,           delstressXX_},
         DataEntry{"DELSTRYY", UnitSystem::measure::pressure,           delstressYY_},
@@ -552,6 +562,7 @@ assignToSolution(data::Solution& sol)
         DataEntry{"MICROBES", UnitSystem::measure::density,            cMicrobes_},
         DataEntry{"OXYGEN",   UnitSystem::measure::density,            cOxygen_},
         DataEntry{"PERMFACT", UnitSystem::measure::identity,           permFact_},
+        DataEntry{"PERMPORO", UnitSystem::measure::identity,           permPoro_},
         DataEntry{"PORV_RC",  UnitSystem::measure::identity,           rockCompPorvMultiplier_},
         DataEntry{"PRESPOTF", UnitSystem::measure::pressure,           mechPotentialPressForce_},
         DataEntry{"PRES_OVB", UnitSystem::measure::pressure,           overburdenPressure_},
@@ -783,12 +794,15 @@ setRestart(const data::Solution& sol,
     };
 
     const auto fields = std::array{
+        std::pair{"BACTERIA", &cBacteria_},
         std::pair{"BIOFILM",  &cBiofilm_},
+        std::pair{"BIOFMASS", &cBiofMass_},
         std::pair{"CALCITE",  &cCalcite_},
         std::pair{"FOAM",     &cFoam_},
         std::pair{"MICROBES", &cMicrobes_},
         std::pair{"OXYGEN",   &cOxygen_},
         std::pair{"PERMFACT", &permFact_},
+        std::pair{"PERMPORO", &permPoro_},
         std::pair{"POLYMER",  &cPolymer_},
         std::pair{"PPCW",     &ppcw_},
         std::pair{"PRESSURE", &fluidPressure_},
@@ -1130,6 +1144,12 @@ doAllocBuffers(const unsigned bufferSize,
         cUrea_.resize(bufferSize, 0.0);
         cBiofilm_.resize(bufferSize, 0.0);
         cCalcite_.resize(bufferSize, 0.0);
+    }
+
+    if (enableMicrobes_){
+        cBacteria_.resize(bufferSize, 0.0);
+        permPoro_.resize(bufferSize, 0.0);
+        cBiofMass_.resize(bufferSize, 0.0);
     }
 
     if (vapparsActive) {

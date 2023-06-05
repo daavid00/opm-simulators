@@ -56,7 +56,8 @@ public:
                                          getPropValue<TypeTag, Properties::EnableBrine>(),
                                          /*PVOffset=*/0,
                                          /*enabledCompIdx=*/FluidSystem::waterCompIdx,
-                                         5>; //Five MICP components
+                                         5,
+                                         getPropValue<TypeTag, Properties::EnableMicrobes>()>;
 };
 }}
 
