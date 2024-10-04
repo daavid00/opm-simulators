@@ -107,6 +107,7 @@ private:
     using FlowProblemType::enableExtbo;
     using FlowProblemType::enableFoam;
     using FlowProblemType::enableMICP;
+    using FlowProblemType::enableBiofilm;
     using FlowProblemType::enablePolymer;
     using FlowProblemType::enablePolymerMolarWeight;
     using FlowProblemType::enableSaltPrecipitation;
@@ -138,6 +139,7 @@ private:
     using BrineModule = BlackOilBrineModule<TypeTag>;
     using ExtboModule = BlackOilExtboModule<TypeTag>;
     using MICPModule = BlackOilMICPModule<TypeTag>;
+    using BiofilmModule = BlackOilBiofilmModule<TypeTag>;
     using DispersionModule = BlackOilDispersionModule<TypeTag, enableDispersion>;
     using DiffusionModule = BlackOilDiffusionModule<TypeTag, enableDiffusion>;
     using ConvectiveMixingModule = BlackOilConvectiveMixingModule<TypeTag, enableConvectiveMixing>;
@@ -206,6 +208,10 @@ public:
         BlackOilMICPParams<Scalar> micpParams;
         micpParams.template initFromState<enableMICP>(vanguard.eclState());
         MICPModule::setParams(std::move(micpParams));
+
+        BlackOilBiofilmParams<Scalar> biofilfParams;
+        biofilfParams.template initFromState<enableBiofilm>(vanguard.eclState());
+        BiofilmModule::setParams(std::move(biofilfParams));
 
         BlackOilPolymerParams<Scalar> polymerParams;
         polymerParams.template initFromState<enablePolymer, enablePolymerMolarWeight>(vanguard.eclState());
@@ -688,23 +694,20 @@ public:
     LhsEval permFactTransMultiplier(const IntensiveQuantities& intQuants, unsigned elementIdx) const
     {
         OPM_TIMEBLOCK_LOCAL(permFactTransMultiplier);
-        if (!enableSaltPrecipitation && !enableMICP)
-            return 1.0;
-
-        const auto& fs = intQuants.fluidState();
-        unsigned tableIdx = this->simulator().problem().satnumRegionIndex(elementIdx);
-        
-        LhsEval porosityFactor = decay<LhsEval>(1. - fs.saltSaturation());
-        porosityFactor = min(porosityFactor, 1.0);
         if constexpr (enableSaltPrecipitation) {
+            const auto& fs = intQuants.fluidState();
+            unsigned tableIdx = this->simulator().problem().satnumRegionIndex(elementIdx);
+            LhsEval porosityFactor = decay<LhsEval>(1. - fs.saltSaturation());
+            porosityFactor = min(porosityFactor, 1.0);
             const auto& permfactTable = BrineModule::permfactTable(tableIdx);
             return permfactTable.eval(porosityFactor, /*extrapolation=*/true);
         }
-        if constexpr (enableMICP){
-            const auto& permfactTable = MICPModule::permfactTable(tableIdx);
-            return permfactTable.eval(porosityFactor, /*extrapolation=*/true);
+        else if constexpr (enableMICP || enableBiofilm) {
+            return intQuants.permFactor().value();
         }
-        return 1.0;
+        else {
+            return 1.0;
+        }
     }
 
     // temporary solution to facilitate output of initial state from flow
@@ -918,6 +921,10 @@ public:
             values[Indices::ureaConcentrationIdx]= this->micp_.ureaConcentration[globalDofIdx];
             values[Indices::calciteConcentrationIdx]= this->micp_.calciteConcentration[globalDofIdx];
             values[Indices::biofilmConcentrationIdx]= this->micp_.biofilmConcentration[globalDofIdx];
+        }
+
+        if constexpr (enableBiofilm) {
+            values[Indices::biofilmConcentrationIdx] = this->biofilmsConcentration_[globalDofIdx];
         }
 
         values.checkDefined();
@@ -1502,12 +1509,13 @@ protected:
     {
         FlowProblemType::readInitialCondition_();
 
-        if constexpr (enableSolvent || enablePolymer || enablePolymerMolarWeight || enableMICP)
+        if constexpr (enableSolvent || enablePolymer || enablePolymerMolarWeight || enableMICP || enableBiofilm)
             this->readBlackoilExtentionsInitialConditions_(this->model().numGridDof(),
                                                            enableSolvent,
                                                            enablePolymer,
                                                            enablePolymerMolarWeight,
-                                                           enableMICP);
+                                                           enableMICP,
+                                                           enableBiofilm);
 
     }
 

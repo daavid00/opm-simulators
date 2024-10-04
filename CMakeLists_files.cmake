@@ -76,6 +76,7 @@ list (APPEND MAIN_SOURCE_FILES
   flowexperimental/FIBlackOilModelNoCache.hpp
   flowexperimental/flowexp.hpp
   flowexperimental/FlowExpNewtonMethod.hpp
+  opm/models/blackoil/blackoilbiofilmparams.cpp
   opm/models/blackoil/blackoilbrineparams.cpp
   opm/models/blackoil/blackoilextboparams.cpp
   opm/models/blackoil/blackoilfoamparams.cpp
@@ -83,6 +84,7 @@ list (APPEND MAIN_SOURCE_FILES
   opm/models/blackoil/blackoilnewtonmethodparams.cpp
   opm/models/blackoil/blackoilpolymerparams.cpp
   opm/models/blackoil/blackoilsolventparams.cpp
+  opm/models/io/vtkblackoilbiofilmparams.cpp
   opm/models/io/vtkblackoilenergyparams.cpp
   opm/models/io/vtkblackoilmicpparams.cpp
   opm/models/io/vtkblackoilpolymerparams.cpp
@@ -636,6 +638,8 @@ list (APPEND TEST_DATA_FILES
 # originally generated with the command:
 # find opm -name '*.h*' -a ! -name '*-pch.hpp' -printf '\t%p\n' | sort
 list (APPEND PUBLIC_HEADER_FILES
+  opm/models/blackoil/blackoilbiofilmmodules.hh
+  opm/models/blackoil/blackoilbiofilmparams.hpp
   opm/models/blackoil/blackoilboundaryratevector.hh
   opm/models/blackoil/blackoilbrinemodules.hh
   opm/models/blackoil/blackoilbrineparams.hpp
@@ -751,6 +755,8 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/models/io/simplexvanguard.hh
   opm/models/io/structuredgridvanguard.hh
   opm/models/io/unstructuredgridvanguard.hh
+  opm/models/io/vtkblackoilbiofilmmodule.hpp
+  opm/models/io/vtkblackoilbiofilmparams.hpp
   opm/models/io/vtkblackoilenergymodule.hpp
   opm/models/io/vtkblackoilenergyparams.hpp
   opm/models/io/vtkblackoilmicpmodule.hpp

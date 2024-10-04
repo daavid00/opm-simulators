@@ -31,6 +31,7 @@
 #include <opm/common/Exceptions.hpp>
 
 #include <opm/models/blackoil/blackoilproperties.hh>
+#include <opm/models/blackoil/blackoilbiofilmmodules.hh>
 #include <opm/models/blackoil/blackoilmicpmodules.hh>
 #include <opm/models/blackoil/blackoilnewtonmethodparams.hpp>
 
@@ -66,6 +67,7 @@ class BlackOilNewtonMethod : public GetPropType<TypeTag, Properties::DiscNewtonM
     using Scalar = GetPropType<TypeTag, Properties::Scalar>;
     using Linearizer = GetPropType<TypeTag, Properties::Linearizer>;
     using MICPModule = BlackOilMICPModule<TypeTag>;
+    using BiofilmModule = BlackOilBiofilmModule<TypeTag>;
 
     static const unsigned numEq = getPropValue<TypeTag, Properties::NumEq>();
     static constexpr bool enableSaltPrecipitation = getPropValue<TypeTag, Properties::EnableSaltPrecipitation>();
@@ -205,6 +207,7 @@ protected:
         static constexpr bool enableFoam = Indices::foamConcentrationIdx >= 0;
         static constexpr bool enableBrine = Indices::saltConcentrationIdx >= 0;
         static constexpr bool enableMICP = Indices::microbialConcentrationIdx >= 0;
+        static constexpr bool enableBiofilm = Indices::biofilmConcentrationIdx >= 0;
 
         currentValue.checkDefined();
         Valgrind::CheckDefined(update);
@@ -396,6 +399,10 @@ protected:
                                                                     this->problem().referencePorosity(globalDofIdx, 0) - 1e-8);
                 }
             }
+
+            // keep the biofilm concentration above 0
+            if (enableBiofilm && pvIdx == Indices::biofilmConcentrationIdx)
+                nextValue[pvIdx] = std::min(nextValue[pvIdx], 1.0-1.e-8);
         }
 
         // switch the new primary variables to something which is physically meaningful.

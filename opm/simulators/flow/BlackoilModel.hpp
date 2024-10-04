@@ -324,6 +324,7 @@ protected:
     static constexpr bool has_foam_ = getPropValue<TypeTag, Properties::EnableFoam>();
     static constexpr bool has_brine_ = getPropValue<TypeTag, Properties::EnableBrine>();
     static constexpr bool has_micp_ = getPropValue<TypeTag, Properties::EnableMICP>();
+    static constexpr bool has_biofilm_ = getPropValue<TypeTag, Properties::EnableBiofilm>();
 
     ModelParameters                 param_;
     SimulatorReportSingle failureReport_;

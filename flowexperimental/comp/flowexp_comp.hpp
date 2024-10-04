@@ -261,6 +261,11 @@ struct EnableMICP<TypeTag, TTag::FlowExpCompProblem<NumComp, EnableWater>> {
     static constexpr bool value = false;
 };
 
+template<class TypeTag, int NumComp, bool EnableWater>
+struct EnableBiofilm<TypeTag, TTag::FlowExpCompProblem<NumComp, EnableWater>> {
+    static constexpr bool value = false;
+};
+
 // disable thermal flux boundaries by default
 #if 0
 template<class TypeTag>

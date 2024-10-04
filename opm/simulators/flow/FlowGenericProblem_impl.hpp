@@ -101,6 +101,7 @@ serializationTestObject(const EclipseState& eclState,
     result.solventRsw_ = {18.0};
     result.polymer_ = PolymerSolutionContainer<Scalar>::serializationTestObject();
     result.micp_ = MICPSolutionContainer<Scalar>::serializationTestObject();
+    result.biofilmsConcentration_ = {19.0};
 
     return result;
 }
@@ -478,7 +479,8 @@ readBlackoilExtentionsInitialConditions_(std::size_t numDof,
                                          bool enableSolvent,
                                          bool enablePolymer,
                                          bool enablePolymerMolarWeight,
-                                         bool enableMICP)
+                                         bool enableMICP,
+                                         bool enableBiofilm)
 {
     auto getArray = [](const std::vector<double>& input)
     {
@@ -542,6 +544,24 @@ readBlackoilExtentionsInitialConditions_(std::size_t numDof,
             micp_.calciteConcentration.resize(numDof, 0.0);
         }
     }
+    if (enableBiofilm) {
+        if (eclState_.fieldProps().has_double("SBIOF")){
+            biofilmsConcentration_ = eclState_.fieldProps().get_double("SBIOF");
+        }
+        else
+            biofilmsConcentration_.resize(numDof, 0.0);
+    }
+}
+
+template<class GridView, class FluidSystem>
+typename FlowGenericProblem<GridView,FluidSystem>::Scalar
+FlowGenericProblem<GridView,FluidSystem>::
+biofilmsConcentration(unsigned globalDofIdx) const
+{
+    if (biofilmsConcentration_.empty())
+        return 0.0;
+
+    return biofilmsConcentration_[globalDofIdx];
 }
 
 template<class GridView, class FluidSystem>
@@ -747,7 +767,8 @@ operator==(const FlowGenericProblem& rhs) const
            this->solventSaturation_ == rhs.solventSaturation_ &&
            this->solventRsw_ == rhs.solventRsw_ &&
            this->polymer_ == rhs.polymer_ &&
-           this->micp_ == rhs.micp_;
+           this->micp_ == rhs.micp_ &&
+           this->biofilmsConcentration_ == rhs.biofilmsConcentration_;
 }
 
 } // namespace Opm

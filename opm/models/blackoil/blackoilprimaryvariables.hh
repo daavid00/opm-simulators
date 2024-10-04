@@ -37,6 +37,7 @@
 #include <opm/models/blackoil/blackoilextbomodules.hh>
 #include <opm/models/blackoil/blackoilfoammodules.hh>
 #include <opm/models/blackoil/blackoilmicpmodules.hh>
+#include <opm/models/blackoil/blackoilbiofilmmodules.hh>
 #include <opm/models/blackoil/blackoilpolymermodules.hh>
 #include <opm/models/blackoil/blackoilproperties.hh>
 #include <opm/models/blackoil/blackoilsolventmodules.hh>
@@ -106,6 +107,7 @@ class BlackOilPrimaryVariables : public FvBasePrimaryVariables<TypeTag>
     enum { enableEnergy = getPropValue<TypeTag, Properties::EnableEnergy>() };
     enum { enableTemperature = getPropValue<TypeTag, Properties::EnableTemperature>() };
     enum { enableMICP = getPropValue<TypeTag, Properties::EnableMICP>() };
+    enum { enableBiofilm = getPropValue<TypeTag, Properties::EnableBiofilm>() };
     enum { gasCompIdx = FluidSystem::gasCompIdx };
     enum { waterCompIdx = FluidSystem::waterCompIdx };
     enum { oilCompIdx = FluidSystem::oilCompIdx };
@@ -119,6 +121,7 @@ class BlackOilPrimaryVariables : public FvBasePrimaryVariables<TypeTag>
     using FoamModule = BlackOilFoamModule<TypeTag, enableFoam>;
     using BrineModule = BlackOilBrineModule<TypeTag, enableBrine>;
     using MICPModule = BlackOilMICPModule<TypeTag, enableMICP>;
+    using BiofilmModule = BlackOilBiofilmModule<TypeTag, enableBiofilm>;
 
     static_assert(numPhases == 3, "The black-oil model assumes three phases!");
     static_assert(numComponents == 3, "The black-oil model assumes three components!");
@@ -652,6 +655,17 @@ public:
             pcFactor_ = 1.0;
         }
 
+        if (BiofilmModule::hasPcfactTables()) {
+            unsigned satnumRegionIdx = problem.satnumRegionIndex(globalDofIdx);
+            Scalar Ss = biofilmsConcentration_();
+            Scalar porosityFactor  = min(1.0 - Ss, 1.0); //phi/phi_0
+            const auto& pefactTable = BiofilmModule::pcfactTable(satnumRegionIdx);
+            pcFactor_ = pefactTable.eval(porosityFactor, /*extrapolation=*/true);
+        }
+        else {
+            pcFactor_ = 1.0;
+        }
+
         switch(primaryVarsMeaningWater()) {
             case WaterMeaning::Sw:
             {
@@ -1079,6 +1093,14 @@ private:
     {
         if constexpr (enableMICP)
             return (*this)[Indices::calciteConcentrationIdx];
+        else
+            return 0.0;
+    }
+
+    Scalar biofilmsConcentration_() const
+    {
+        if constexpr (enableBiofilm)
+            return (*this)[Indices::biofilmConcentrationIdx];
         else
             return 0.0;
     }

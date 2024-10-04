@@ -134,7 +134,8 @@ GenericOutputBlackoilModule(const EclipseState& eclState,
                             bool enableBrine,
                             bool enableSaltPrecipitation,
                             bool enableExtbo,
-                            bool enableMICP)
+                            bool enableMICP,
+                            bool enableBiofilm)
     : eclState_(eclState)
     , schedule_(schedule)
     , summaryState_(summaryState)
@@ -153,6 +154,7 @@ GenericOutputBlackoilModule(const EclipseState& eclState,
     , enableSaltPrecipitation_(enableSaltPrecipitation)
     , enableExtbo_(enableExtbo)
     , enableMICP_(enableMICP)
+    , enableBiofilm_(enableBiofilm)
     , flowsC_(schedule, summaryConfig)
     , rftC_(eclState_, schedule_,
             [this](const std::string& wname)
@@ -381,6 +383,8 @@ assignToSolution(data::Solution& sol)
     }
 
     auto extendedSolutionArrays = std::array {
+        DataEntry{"BIOFILMS", UnitSystem::measure::identity,           cBiofilms_},
+        DataEntry{"BIOFMASS", UnitSystem::measure::density,            cBiofMass_},
         DataEntry{"DRSDTCON", UnitSystem::measure::gas_oil_ratio_rate, drsdtcon_},
         DataEntry{"PERMFACT", UnitSystem::measure::identity,           permFact_},
         DataEntry{"PORV_RC",  UnitSystem::measure::identity,           rockCompPorvMultiplier_},
@@ -545,6 +549,8 @@ setRestart(const data::Solution& sol,
     };
 
     const auto fields = std::array{
+        std::pair{"BIOFILMS", &cBiofilms_},
+        std::pair{"BIOFMASS", &cBiofMass_},
         std::pair{"FOAM",     &cFoam_},
         std::pair{"PERMFACT", &permFact_},
         std::pair{"POLYMER",  &cPolymer_},
@@ -760,7 +766,9 @@ doAllocBuffers(const unsigned bufferSize,
        Entry{&cFoam_,                             "", enableFoam_},
        Entry{&cSalt_,                             "", enableBrine_},
        Entry{&pSalt_,                             "", enableSaltPrecipitation_},
-       Entry{&permFact_,                          "", enableSaltPrecipitation_ || enableMICP_},
+       Entry{&permFact_,                          "", enableSaltPrecipitation_ || enableMICP_ || enableBiofilm_},
+       Entry{&cBiofilms_,                         "", enableBiofilm_},
+       Entry{&cBiofMass_,                         "", enableBiofilm_},
        Entry{&soMax_,                             "", oilvap.getType() == OilVapP::VAPPARS},
        Entry{&soMax_,                             "", hysteresisConfig &&
                                                       hysteresisConfig->enableNonWettingHysteresis() &&
@@ -937,6 +945,11 @@ doAllocBuffers(const unsigned bufferSize,
     if (enableMICP_) {
         this->micpC_.allocate(bufferSize);
     }
+    if (enableBiofilm_){
+        cBiofilms_.resize(bufferSize, 0.0);
+        cBiofMass_.resize(bufferSize, 0.0);
+    }
+
 
     // tracers
     this->tracerC_.allocate(bufferSize, eclState_.tracer());

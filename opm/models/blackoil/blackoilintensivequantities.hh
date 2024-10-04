@@ -38,6 +38,7 @@
 #include "blackoildiffusionmodule.hh"
 #include "blackoildispersionmodule.hh"
 #include "blackoilmicpmodules.hh"
+#include "blackoilbiofilmmodules.hh"
 #include "blackoilconvectivemixingmodule.hh"
 
 #include <opm/common/TimingMacros.hpp>
@@ -78,6 +79,7 @@ class BlackOilIntensiveQuantities
     , public BlackOilBrineIntensiveQuantities<TypeTag>
     , public BlackOilEnergyIntensiveQuantities<TypeTag>
     , public BlackOilMICPIntensiveQuantities<TypeTag>
+    , public BlackOilBiofilmIntensiveQuantities<TypeTag>
     , public BlackOilConvectiveMixingIntensiveQuantities<TypeTag>
 {
     using ParentType = GetPropType<TypeTag, Properties::DiscIntensiveQuantities>;
@@ -108,6 +110,7 @@ class BlackOilIntensiveQuantities
     enum { enableDispersion = getPropValue<TypeTag, Properties::EnableDispersion>() };
     enum { enableConvectiveMixing = getPropValue<TypeTag, Properties::EnableConvectiveMixing>() };
     enum { enableMICP = getPropValue<TypeTag, Properties::EnableMICP>() };
+    enum { enableBiofilm = getPropValue<TypeTag, Properties::EnableBiofilm>() };
     enum { numPhases = getPropValue<TypeTag, Properties::NumPhases>() };
     enum { numComponents = getPropValue<TypeTag, Properties::NumComponents>() };
     enum { waterCompIdx = FluidSystem::waterCompIdx };
@@ -132,8 +135,10 @@ class BlackOilIntensiveQuantities
 
     using DirectionalMobilityPtr = Opm::Utility::CopyablePtr<DirectionalMobility<TypeTag, Evaluation>>;
     using BrineModule = BlackOilBrineModule<TypeTag>;
+    using BiofilmModule = BlackOilBiofilmModule<TypeTag>;
     using BrineIntQua = BlackOilBrineIntensiveQuantities<TypeTag, enableSaltPrecipitation>;
     using MICPIntQua = BlackOilMICPIntensiveQuantities<TypeTag, enableMICP>;
+    using BiofilmIntQua = BlackOilBiofilmIntensiveQuantities<TypeTag, enableBiofilm>;
 
 
 public:
@@ -272,19 +277,30 @@ public:
         const auto& materialParams = problem.materialLawParams(globalSpaceIdx);
         MaterialLaw::capillaryPressures(pC, materialParams, fluidState_);
 
-        // scaling the capillary pressure due to salt precipitation
-        if constexpr (enableBrine) {
-            if (BrineModule::hasPcfactTables() && priVars.primaryVarsMeaningBrine() == PrimaryVariables::BrineMeaning::Sp) {
-                unsigned satnumRegionIdx = elemCtx.problem().satnumRegionIndex(elemCtx, dofIdx, timeIdx);
-                const Evaluation Sp = priVars.makeEvaluation(Indices::saltConcentrationIdx, timeIdx);
-                const Evaluation porosityFactor  = min(1.0 - Sp, 1.0); //phi/phi_0
-                const auto& pcfactTable = BrineModule::pcfactTable(satnumRegionIdx);
-                const Evaluation pcFactor = pcfactTable.eval(porosityFactor, /*extrapolation=*/true);
-                for (unsigned phaseIdx = 0; phaseIdx < numPhases; ++phaseIdx)
-                    if (FluidSystem::phaseIsActive(phaseIdx)) {
-                        pC[phaseIdx] *= pcFactor;
-                    }
-            }
+        // scaling the capillary pressure due to salt precipitation 
+        if (BrineModule::hasPcfactTables() && priVars.primaryVarsMeaningBrine() == PrimaryVariables::BrineMeaning::Sp) {
+            unsigned satnumRegionIdx = elemCtx.problem().satnumRegionIndex(elemCtx, dofIdx, timeIdx);
+            const Evaluation Sp = priVars.makeEvaluation(Indices::saltConcentrationIdx, timeIdx);
+            const Evaluation porosityFactor  = min(1.0 - Sp, 1.0); //phi/phi_0
+            const auto& pcfactTable = BrineModule::pcfactTable(satnumRegionIdx);
+            const Evaluation pcFactor = pcfactTable.eval(porosityFactor, /*extrapolation=*/true);
+            for (unsigned phaseIdx = 0; phaseIdx < numPhases; ++phaseIdx)
+                if (FluidSystem::phaseIsActive(phaseIdx)) {
+                    pC[phaseIdx] *= pcFactor;
+                }
+        }
+
+        // scaling the capillary pressure due to biofilm formation
+        if (BiofilmModule::hasPcfactTables()) {
+            unsigned satnumRegionIdx = elemCtx.problem().satnumRegionIndex(elemCtx, dofIdx, timeIdx);
+            const Evaluation Ss = priVars.makeEvaluation(Indices::biofilmConcentrationIdx, timeIdx);
+            const Evaluation porosityFactor  = min(1.0 - Ss, 1.0); //phi/phi_0
+            const auto& pefactTable = BiofilmModule::pcfactTable(satnumRegionIdx);
+            const Evaluation peFactor = pefactTable.eval(porosityFactor, /*extrapolation=*/true);
+            for (unsigned phaseIdx = 0; phaseIdx < numPhases; ++phaseIdx)
+                if (FluidSystem::phaseIsActive(phaseIdx)) {
+                    pC[phaseIdx] *= peFactor;
+                }
         }
 
         // oil is the reference phase for pressure
@@ -524,6 +540,12 @@ public:
             Evaluation Sp = priVars.makeEvaluation(Indices::saltConcentrationIdx, timeIdx);
             porosity_ *= (1.0 - Sp);
         }
+
+        // deal with biofilm
+        if constexpr (enableBiofilm) {
+            Evaluation Bio = priVars.makeEvaluation(Indices::biofilmConcentrationIdx, timeIdx);
+            porosity_ *= (1.0 - Bio);
+        }
     }
 
     void assertFiniteMembers()
@@ -604,6 +626,9 @@ public:
         }
         if constexpr (enableBrine) {
             asImp_().saltPropertiesUpdate_(elemCtx, dofIdx, timeIdx);
+        }
+        if constexpr (enableBiofilm) {
+            asImp_().biofilmPropertiesUpdate_(elemCtx, dofIdx, timeIdx);
         }
         if constexpr (enableConvectiveMixing) {
             // The ifs are here is to avoid extra calculations for
@@ -712,11 +737,14 @@ public:
         if constexpr (enableMICP) {
             return MICPIntQua::permFactor();
         }
+        else if constexpr (enableBiofilm) {
+            return BiofilmIntQua::permFactor();
+        }
         else if constexpr (enableSaltPrecipitation) {
             return BrineIntQua::permFactor();
         }
         else {
-            throw std::logic_error("permFactor() called but salt precipitation or MICP are disabled");
+            throw std::logic_error("permFactor() called but salt precipitation, MICP, or biofilm are disabled");
         }
     }
 
@@ -728,6 +756,7 @@ private:
     friend BlackOilFoamIntensiveQuantities<TypeTag>;
     friend BlackOilBrineIntensiveQuantities<TypeTag>;
     friend BlackOilMICPIntensiveQuantities<TypeTag>;
+    friend BlackOilBiofilmIntensiveQuantities<TypeTag>;
 
     Implementation& asImp_()
     { return *static_cast<Implementation*>(this); }

@@ -39,6 +39,7 @@
 #include "blackoilconvectivemixingmodule.hh"
 #include "blackoildispersionmodule.hh"
 #include "blackoilmicpmodules.hh"
+#include "blackoilbiofilmmodules.hh"
 #include <opm/material/fluidstates/BlackOilFluidState.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/FaceDir.hpp>
 #include <opm/input/eclipse/Schedule/BCProp.hpp>
@@ -97,6 +98,7 @@ class BlackOilLocalResidualTPFA : public GetPropType<TypeTag, Properties::DiscLo
     static constexpr bool enableDispersion = getPropValue<TypeTag, Properties::EnableDispersion>();
     static constexpr bool enableConvectiveMixing = getPropValue<TypeTag, Properties::EnableConvectiveMixing>();
     static constexpr bool enableMICP = getPropValue<TypeTag, Properties::EnableMICP>();
+    static constexpr bool enableBiofilm = getPropValue<TypeTag, Properties::EnableBiofilm>();
 
     using SolventModule = BlackOilSolventModule<TypeTag>;
     using ExtboModule = BlackOilExtboModule<TypeTag>;
@@ -110,6 +112,7 @@ class BlackOilLocalResidualTPFA : public GetPropType<TypeTag, Properties::DiscLo
 
     using DispersionModule = BlackOilDispersionModule<TypeTag, enableDispersion>;
     using MICPModule = BlackOilMICPModule<TypeTag>;
+    using BiofilmModule = BlackOilBiofilmModule<TypeTag>;
 
     using Toolbox = MathToolbox<Evaluation>;
 
@@ -224,6 +227,9 @@ public:
 
         // deal with micp (if present)
         MICPModule::addStorage(storage, intQuants);
+
+        // deal with biofilm (if present)
+        BiofilmModule::addStorage(storage, intQuants);
     }
 
     /*!
@@ -373,7 +379,7 @@ public:
             unsigned globalUpIndex = (upIdx == interiorDofIdx) ? globalIndexIn : globalIndexEx;
             // Use arithmetic average (more accurate with harmonic, but that requires recomputing the transmissbility)
             Evaluation transMult = (intQuantsIn.rockCompTransMultiplier() + Toolbox::value(intQuantsEx.rockCompTransMultiplier()))/2;
-            if constexpr (enableMICP) {
+            if constexpr (enableMICP || enableBiofilm) { //enableBiofilm
                 transMult *= (intQuantsIn.permFactor() + Toolbox::value(intQuantsEx.permFactor()))/2;
             }
             Evaluation darcyFlux;
@@ -403,6 +409,13 @@ public:
                     MICPModule::template addMICPFluxes_<Evaluation, Evaluation, IntensiveQuantities>(
                         flux, darcyFlux, intQuantsIn);
                 }
+                if constexpr (enableBiofilm) {
+                    if (phaseIdx == waterPhaseIdx) {
+                        pressureDifference *= (-trans / faceArea);
+                        BiofilmModule::template addBiofilmFluxes_<Evaluation, Evaluation, IntensiveQuantities>(
+                            flux, pressureDifference, intQuantsIn);
+                        }
+                }
             } else {
                 const auto& invB = getInvB_<FluidSystem, FluidState, Scalar>(up.fluidState(), phaseIdx, pvtRegionIdx);
                 const auto& surfaceVolumeFlux = invB * darcyFlux;
@@ -411,12 +424,20 @@ public:
                 if constexpr (enableEnergy) {
                     EnergyModule::template
                         addPhaseEnthalpyFluxes_<Scalar, Evaluation, FluidState>
-                        (flux,phaseIdx,darcyFlux, up.fluidState());
+                        (flux, phaseIdx, darcyFlux, up.fluidState());
                 }
                 if constexpr (enableMICP) {
                     MICPModule::template
                         addMICPFluxes_<Scalar, Evaluation, IntensiveQuantities>
                         (flux, darcyFlux, intQuantsEx);
+                }
+                if constexpr (enableBiofilm) {
+                    if (phaseIdx == waterPhaseIdx) {
+                        pressureDifference *= (-trans / faceArea);
+                        BiofilmModule::template
+                            addBiofilmFluxes_<Scalar, Evaluation, IntensiveQuantities>
+                            (flux, pressureDifference, intQuantsEx);
+                    }
                 }
             }
 
@@ -506,7 +527,6 @@ public:
                                                 intQuantsEx,
                                                 tmpdispersivity,
                                                 normVelocityAvg);
-
         }
         
         // apply the scaling for the urea equation in MICP
@@ -639,6 +659,7 @@ public:
 
         static_assert(!enableSolvent, "Relevant treatment of boundary conditions must be implemented before enabling.");
         static_assert(!enablePolymer, "Relevant treatment of boundary conditions must be implemented before enabling.");
+        //static_assert(!enableBiofilm, "Relevant treatment of boundary conditions must be implemented before enabling.");
 
         // make sure that the right mass conservation quantities are used
         adaptMassConservationQuantities_(bdyFlux, insideIntQuants.pvtRegionIndex());
@@ -698,6 +719,9 @@ public:
 
         // deal with MICP (if present)
         MICPModule::addSource(source, problem, insideIntQuants, globalSpaceIdex);
+
+        // deal with biofilm (if present)
+        BiofilmModule::addSource(source, problem, insideIntQuants, globalSpaceIdex);
 
         // scale the source term of the energy equation
         if constexpr(enableEnergy)
