@@ -24,6 +24,7 @@
 
 #include <opm/simulators/flow/Main.hpp>
 
+#include <flow/flow_biofilm.hpp>
 #include <flow/flow_blackoil.hpp>
 #include <flow/flow_blackoil_legacyassembly.hpp>
 #include <flow/flow_brine.hpp>
@@ -77,6 +78,11 @@ int Opm::Main::dispatchDynamic_()
     // Single-phase case
     if (rspec.micp()) {
         return this->runMICP(phases);
+    }
+
+    // Biofilm module require two-phase water-gas
+    else if (rspec.biof()) {
+        return this->runBiofilm(phases);
     }
 
     // water-only case
@@ -156,6 +162,22 @@ int Opm::Main::runMICP(const Phases& phases)
                         this->outputCout_,
                         this->outputFiles_);
 }
+
+int Opm::Main::runBiofilm(const Phases& phases)
+    {
+        if (!(phases.active(Phase::WATER) && phases.active(Phase::GAS)) || (phases.size() > 2)) {
+            if (outputCout_) {
+                std::cerr << "Biofilm option can only be used for two-phase water/gas model (i.e. in "
+                          << "combination with WATER and GAS)." << std::endl;
+            }
+
+            return EXIT_FAILURE;
+        }
+        return flowBiofilmMain(this->argc_,
+                        this->argv_,
+                        this->outputCout_,
+                        this->outputFiles_);
+    }
 
 int Opm::Main::runTwoPhase(const Phases& phases)
 {

@@ -86,6 +86,15 @@ public:
                           const Scalar   co2InWater,
                           const Scalar   mM);
 
+    bool hasWaterMass() const;
+    void assignWaterMass(const unsigned globalDofIdx,
+                         const std::array<Scalar, numPhases>& fip,
+                         const Scalar   rhoW);
+
+    bool hasBiofilmMass() const;
+    void assignBiofilmMass(const unsigned globalDofIdx,
+                          const Scalar   co2InWater);
+
     void assignGasWater(const unsigned  globalDofIdx,
                         const std::array<Scalar, numPhases>& fip,
                         const Scalar    gasInPlaceWater,
