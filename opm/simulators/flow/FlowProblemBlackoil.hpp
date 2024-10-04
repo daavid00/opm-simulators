@@ -107,6 +107,7 @@ private:
     using FlowProblemType::enableExtbo;
     using FlowProblemType::enableFoam;
     using FlowProblemType::enableMICP;
+    using FlowProblemType::enableBiofilm;
     using FlowProblemType::enablePolymer;
     using FlowProblemType::enablePolymerMolarWeight;
     using FlowProblemType::enableSaltPrecipitation;
@@ -138,6 +139,7 @@ private:
     using BrineModule = BlackOilBrineModule<TypeTag>;
     using ExtboModule = BlackOilExtboModule<TypeTag>;
     using MICPModule = BlackOilMICPModule<TypeTag>;
+    using BiofilmModule = BlackOilBiofilmModule<TypeTag>;
     using DispersionModule = BlackOilDispersionModule<TypeTag, enableDispersion>;
     using DiffusionModule = BlackOilDiffusionModule<TypeTag, enableDiffusion>;
     using ConvectiveMixingModule = BlackOilConvectiveMixingModule<TypeTag, enableConvectiveMixing>;
@@ -206,6 +208,10 @@ public:
         BlackOilMICPParams<Scalar> micpParams;
         micpParams.template initFromState<enableMICP>(vanguard.eclState());
         MICPModule::setParams(std::move(micpParams));
+
+        BlackOilBiofilmParams<Scalar> biofilfParams;
+        biofilfParams.template initFromState<enableBiofilm>(vanguard.eclState());
+        BiofilmModule::setParams(std::move(biofilfParams));
 
         BlackOilPolymerParams<Scalar> polymerParams;
         polymerParams.template initFromState<enablePolymer, enablePolymerMolarWeight>(vanguard.eclState());
@@ -698,6 +704,26 @@ public:
         return permfactTable.eval(porosityFactor, /*extrapolation=*/true);
     }
 
+    /*!
+     * \brief Calculate the transmissibility multiplier due to porosity reduction.
+     *
+     * TODO: The API of this is a bit ad-hoc, it would be better to use context objects.
+     */
+    template <class LhsEval>
+    LhsEval permPoroTransMultiplier(const IntensiveQuantities& intQuants, unsigned elementIdx) const
+    {
+        OPM_TIMEBLOCK_LOCAL(permPoroTransMultiplier);
+        if (!enableBiofilm)
+            return 1.0;
+
+        const auto& fs = intQuants.fluidState();
+        const int satid = this->materialLawManager()->satnumRegionIdx(elementIdx);
+        LhsEval porFactor = decay<LhsEval>(1. - intQuants.biofilmsConcentration());
+        porFactor = min(porFactor, 1.0);
+        const auto& permporoTable = BiofilmModule::permporoTable(satid);
+        return permporoTable.eval(porFactor, /*extrapolation=*/true);
+    }
+
     // temporary solution to facilitate output of initial state from flow
     const InitialFluidState& initialFluidState(unsigned globalDofIdx) const
     { return initialFluidStates_[globalDofIdx]; }
@@ -910,6 +936,10 @@ public:
             values[Indices::ureaConcentrationIdx]= this->micp_.ureaConcentration[globalDofIdx];
             values[Indices::calciteConcentrationIdx]= this->micp_.calciteConcentration[globalDofIdx];
             values[Indices::biofilmConcentrationIdx]= this->micp_.biofilmConcentration[globalDofIdx];
+        }
+
+        if constexpr (enableBiofilm) {
+            values[Indices::biofilmsConcentrationIdx] = this->biofilmsConcentration_[globalDofIdx];
         }
 
         values.checkDefined();
@@ -1139,6 +1169,11 @@ protected:
             this->micp_.resize(numElems);
         }
 
+        if constexpr (enableBiofilm) {
+            this->biofilmsConcentration_.resize(numElems, 0.0);
+            this->biofilmDensity_.resize(numElems, 0.0);
+        }
+
         // Initialize mixing controls before trying to set any lastRx valuesx
         this->mixControls_.init(numElems, restart_step, eclState.runspec().tabdims().getNumPVTTables());
 
@@ -1186,6 +1221,8 @@ protected:
                 this->micp_.biofilmConcentration[elemIdx] = this->eclWriter_->outputModule().getBiofilmConcentration(elemIdx);
                 this->micp_.calciteConcentration[elemIdx] = this->eclWriter_->outputModule().getCalciteConcentration(elemIdx);
             }
+            if constexpr (enableBiofilm)
+                 this->biofilmsConcentration_[elemIdx] = eclWriter_->outputModule().getBiofilmsConcentration(elemIdx);
             // if we need to restart for polymer molecular weight simulation, we need to add related here
         }
 
@@ -1461,12 +1498,13 @@ protected:
     {
         FlowProblemType::readInitialCondition_();
 
-        if constexpr (enableSolvent || enablePolymer || enablePolymerMolarWeight || enableMICP)
+        if constexpr (enableSolvent || enablePolymer || enablePolymerMolarWeight || enableMICP || enableBiofilm)
             this->readBlackoilExtentionsInitialConditions_(this->model().numGridDof(),
                                                            enableSolvent,
                                                            enablePolymer,
                                                            enablePolymerMolarWeight,
-                                                           enableMICP);
+                                                           enableMICP,
+                                                           enableBiofilm);
 
     }
 

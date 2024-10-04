@@ -197,6 +197,14 @@ public:
         return 0;
     }
 
+    Scalar getPermPoro(unsigned elemIdx) const
+    {
+        if (permPoro_.size() > elemIdx)
+            return permPoro_[elemIdx];
+
+        return 0;
+    }
+
     Scalar getMicrobialConcentration(unsigned elemIdx) const
     {
         if (cMicrobes_.size() > elemIdx)
@@ -233,6 +241,22 @@ public:
     {
         if (cCalcite_.size() > elemIdx)
             return cCalcite_[elemIdx];
+
+        return 0;
+    }
+
+    Scalar getBiofilmsConcentration(unsigned elemIdx) const
+    {
+        if (cBiofilms_.size() > elemIdx)
+            return cBiofilms_[elemIdx];
+
+        return 0;
+    }
+
+    Scalar getBiofilmMass(unsigned elemIdx) const
+    {
+        if (cBiofMass_.size() > elemIdx)
+            return cBiofMass_[elemIdx];
 
         return 0;
     }
@@ -354,6 +378,7 @@ protected:
                                 bool enableSaltPrecipitation,
                                 bool enableExtbo,
                                 bool enableMICP,
+                                bool enableBiofilm,
                                 bool isCompositional = false);
 
     void doAllocBuffers(unsigned bufferSize,
@@ -425,6 +450,7 @@ protected:
     bool enableExtbo_{false};
     bool enableMICP_{false};
     bool isCompositional_{false};
+    bool enableBiofilm_{false};
 
     bool forceDisableFipOutput_{false};
     bool forceDisableFipresvOutput_{false};
@@ -470,6 +496,7 @@ protected:
     ScalarBuffer cSalt_;
     ScalarBuffer pSalt_;
     ScalarBuffer permFact_;
+    ScalarBuffer permPoro_;
     ScalarBuffer extboX_;
     ScalarBuffer extboY_;
     ScalarBuffer extboZ_;
@@ -497,6 +524,8 @@ protected:
     ScalarBuffer cOxygen_;
     ScalarBuffer cUrea_;
     ScalarBuffer cBiofilm_;
+    ScalarBuffer cBiofilms_;
+    ScalarBuffer cBiofMass_;
     ScalarBuffer cCalcite_;
     ScalarBuffer pcgw_;
     ScalarBuffer pcow_;
