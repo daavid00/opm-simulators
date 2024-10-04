@@ -106,6 +106,8 @@ serializationTestObject(const EclipseState& eclState,
     result.solventRsw_ = {18.0};
     result.polymer_ = PolymerSolutionContainer<Scalar>::serializationTestObject();
     result.micp_ = MICPSolutionContainer<Scalar>::serializationTestObject();
+    result.biofilmsConcentration_ = {19.0};
+    result.biofilmDensity_ = {20.0};
 
     return result;
 }
@@ -490,7 +492,8 @@ readBlackoilExtentionsInitialConditions_(std::size_t numDof,
                                          bool enableSolvent,
                                          bool enablePolymer,
                                          bool enablePolymerMolarWeight,
-                                         bool enableMICP)
+                                         bool enableMICP,
+                                         bool enableBiofilm)
 {
     auto getArray = [](const std::vector<double>& input)
     {
@@ -554,6 +557,41 @@ readBlackoilExtentionsInitialConditions_(std::size_t numDof,
             micp_.calciteConcentration.resize(numDof, 0.0);
         }
     }
+    if (enableBiofilm) {
+        biofilmDensity_.resize(numDof, 0.0);
+        if (eclState_.fieldProps().has_double("SBIOF")){
+            biofilmsConcentration_ = eclState_.fieldProps().get_double("SBIOF");
+            const auto& biofpara = eclState_.getTableManager().getBiofpara();
+            for (std::size_t elemIdx = 0; elemIdx < numDof; ++elemIdx) {
+                const auto& indx = satnum_[elemIdx];
+                biofilmDensity_[elemIdx] = biofpara[indx].biofilm_density;
+            }
+        }
+        else
+            biofilmsConcentration_.resize(numDof, 0.0);
+    }
+}
+
+template<class GridView, class FluidSystem>
+typename FlowGenericProblem<GridView,FluidSystem>::Scalar
+FlowGenericProblem<GridView,FluidSystem>::
+biofilmDensity(unsigned globalDofIdx) const
+{
+    if (biofilmDensity_.empty())
+        return 0.0;
+
+    return biofilmDensity_[globalDofIdx];
+}
+
+template<class GridView, class FluidSystem>
+typename FlowGenericProblem<GridView,FluidSystem>::Scalar
+FlowGenericProblem<GridView,FluidSystem>::
+biofilmsConcentration(unsigned globalDofIdx) const
+{
+    if (biofilmsConcentration_.empty())
+        return 0.0;
+
+    return biofilmsConcentration_[globalDofIdx];
 }
 
 template<class GridView, class FluidSystem>
@@ -759,7 +797,9 @@ operator==(const FlowGenericProblem& rhs) const
            this->solventSaturation_ == rhs.solventSaturation_ &&
            this->solventRsw_ == rhs.solventRsw_ &&
            this->polymer_ == rhs.polymer_ &&
-           this->micp_ == rhs.micp_;
+           this->micp_ == rhs.micp_ &&
+           this->biofilmsConcentration_ == rhs.biofilmsConcentration_ &&
+           this->biofilmDensity_ == rhs.biofilmDensity_;
 }
 
 } // namespace Opm

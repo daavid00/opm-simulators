@@ -19,7 +19,7 @@
 // Define making clear that the simulator supports AMG
 #define FLOW_SUPPORT_AMG 1
 
-#include <flow/flow_gaswater_solvent.hpp>
+#include <flow/flow_biofilm.hpp>
 
 #include <opm/material/common/ResetLocale.hpp>
 #include <opm/models/blackoil/blackoiltwophaseindices.hh>
@@ -31,19 +31,24 @@
 namespace Opm {
 namespace Properties {
 namespace TTag {
-struct FlowGasWaterSolventProblem {
+struct FlowBiofilmProblem {
     using InheritsFrom = std::tuple<FlowProblem>;
 };
 }
 
 template<class TypeTag>
-struct EnableSolvent<TypeTag, TTag::FlowGasWaterSolventProblem> {
+struct EnableBiofilm<TypeTag, TTag::FlowBiofilmProblem> { 
+    static constexpr bool value = true; 
+};
+
+template<class TypeTag>
+struct EnableDisgasInWater<TypeTag, TTag::FlowBiofilmProblem> {
     static constexpr bool value = true;
 };
 
 //! The indices required by the model
 template<class TypeTag>
-struct Indices<TypeTag, TTag::FlowGasWaterSolventProblem>
+struct Indices<TypeTag, TTag::FlowBiofilmProblem>
 {
 private:
     // it is unfortunately not possible to simply use 'TypeTag' here because this leads
@@ -62,7 +67,7 @@ public:
                                          /*PVOffset=*/0,
                                          /*disabledCompIdx=*/FluidSystem::oilCompIdx,
                                          getPropValue<TypeTag, Properties::EnableMICP>(),
-                                         getPropValue<TypeTag, Properties::EnableBiofilm>()>;
+                                         1>;
 };
 }}
 
@@ -70,20 +75,20 @@ namespace Opm {
 
 
 // ----------------- Main program -----------------
-int flowGasWaterSolventMain(int argc, char** argv, bool outputCout, bool outputFiles)
+int flowBiofilmMain(int argc, char** argv, bool outputCout, bool outputFiles)
 {
     // we always want to use the default locale, and thus spare us the trouble
     // with incorrect locale settings.
     resetLocale();
 
-    FlowMain<Properties::TTag::FlowGasWaterSolventProblem>
+    FlowMain<Properties::TTag::FlowBiofilmProblem>
         mainfunc {argc, argv, outputCout, outputFiles} ;
     return mainfunc.execute();
 }
 
-int flowGasWaterSolventMainStandalone(int argc, char** argv)
+int flowBiofilmMainStandalone(int argc, char** argv)
 {
-    using TypeTag = Properties::TTag::FlowGasWaterSolventProblem;
+    using TypeTag = Properties::TTag::FlowBiofilmProblem;
     auto mainObject = std::make_unique<Opm::Main>(argc, argv);
     auto ret = mainObject->runStatic<TypeTag>();
     // Destruct mainObject as the destructor calls MPI_Finalize!

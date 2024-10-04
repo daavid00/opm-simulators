@@ -288,6 +288,10 @@ template<class TypeTag>
 struct EnableMICP<TypeTag, TTag::FlowExpCompProblem> {
     static constexpr bool value = false;
 };
+template<class TypeTag>
+struct EnableBiofilm<TypeTag, TTag::FlowExpCompProblem> {
+    static constexpr bool value = false;
+};
 
 // disable thermal flux boundaries by default
 #if 0
