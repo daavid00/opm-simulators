@@ -127,6 +127,10 @@ struct EnableSaltPrecipitation<TypeTag, TTag::FlowProblem>
 template<class TypeTag>
 struct EnableMICP<TypeTag, TTag::FlowProblem>
 { static constexpr bool value = false; };
+template<class TypeTag>
+struct EnableBiofilm<TypeTag, TTag::FlowProblem> {
+    static constexpr bool value = false;
+};
 
 template<class TypeTag>
 struct EnableDispersion<TypeTag, TTag::FlowProblem>
@@ -190,6 +194,7 @@ namespace Opm {
         static constexpr int contiUreaEqIdx = Indices::contiUreaEqIdx;
         static constexpr int contiBiofilmEqIdx = Indices::contiBiofilmEqIdx;
         static constexpr int contiCalciteEqIdx = Indices::contiCalciteEqIdx;
+        static constexpr int contiBiofilmsEqIdx = Indices::contiBiofilmsEqIdx;
         static constexpr int solventSaturationIdx = Indices::solventSaturationIdx;
         static constexpr int zFractionIdx = Indices::zFractionIdx;
         static constexpr int polymerConcentrationIdx = Indices::polymerConcentrationIdx;
@@ -202,6 +207,7 @@ namespace Opm {
         static constexpr int ureaConcentrationIdx = Indices::ureaConcentrationIdx;
         static constexpr int biofilmConcentrationIdx = Indices::biofilmConcentrationIdx;
         static constexpr int calciteConcentrationIdx = Indices::calciteConcentrationIdx;
+        static constexpr int biofilmsConcentrationIdx = Indices::biofilmsConcentrationIdx;
 
         using VectorBlockType = Dune::FieldVector<Scalar, numEq>;
         using MatrixBlockType = typename SparseMatrixAdapter::MatrixBlock;
@@ -1272,6 +1278,7 @@ namespace Opm {
         static constexpr bool has_foam_ = getPropValue<TypeTag, Properties::EnableFoam>();
         static constexpr bool has_brine_ = getPropValue<TypeTag, Properties::EnableBrine>();
         static constexpr bool has_micp_ = getPropValue<TypeTag, Properties::EnableMICP>();
+        static constexpr bool has_biofilm_ = getPropValue<TypeTag, Properties::EnableBiofilm>();
 
         ModelParameters                 param_;
         SimulatorReportSingle failureReport_;
