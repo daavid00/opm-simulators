@@ -42,7 +42,8 @@ template<unsigned numSolventsV,
          bool enableFoam,
          bool enableBrine,
          unsigned PVOffset,
-         unsigned numMICPsV>
+         unsigned numMICPsV,
+         unsigned numBiofilmsV>
 struct BlackOilIndices
 {
     //! Number of phases active at all times
@@ -68,6 +69,9 @@ struct BlackOilIndices
     //! Is MICP involved?
     static constexpr bool enableMICP = numMICPsV > 0;
 
+    //! Are biofilms involved?
+    static constexpr bool enableBiofilm = numBiofilmsV > 0;
+
     //! Number of solvent components to be considered
     static constexpr int numSolvents = enableSolvent ? numSolventsV : 0;
 
@@ -89,9 +93,12 @@ struct BlackOilIndices
     //! Number of MICP components to be considered
     static constexpr int numMICPs = enableMICP ? numMICPsV : 0;
 
+    //! Number of biofilms to be considered
+    static const int numBiofilms = enableBiofilm ? numBiofilmsV : 0;
+
     //! The number of equations
     static constexpr int numEq = numPhases + numSolvents + numExtbos + numPolymers +
-                                 numEnergy + numFoam + numBrine + numMICPs;
+                                 numEnergy + numFoam + numBrine + numMICPs + numBiofilms;
 
     //! \brief returns the index of "active" component
     static constexpr int canonicalToActiveComponentIndex(const int compIdx)
@@ -166,17 +173,21 @@ struct BlackOilIndices
     static constexpr int calciteConcentrationIdx =
         numMICPs > 4 ? biofilmConcentrationIdx + 1 : -1000;
 
+    //! Index of the primary variable for the first biofilm
+    static const int biofilmsConcentrationIdx =
+        enableBiofilm ? PVOffset + numPhases + numSolvents : -1000;
+
     //! Index of the primary variable for the foam
     static constexpr int foamConcentrationIdx =
-        enableFoam ? PVOffset + numPhases + numSolvents + numExtbos + numPolymers + numMICPs : -1000;
+        enableFoam ? PVOffset + numPhases + numSolvents + numExtbos + numPolymers + numMICPs + numBiofilms : -1000;
 
     //! Index of the primary variable for the brine
     static constexpr int saltConcentrationIdx =
-        enableBrine ? PVOffset + numPhases + numSolvents + numExtbos + numExtbos + numPolymers + numMICPs + numFoam : -1000;
+        enableBrine ? PVOffset + numPhases + numSolvents + numExtbos + numExtbos + numPolymers + numMICPs + numBiofilms + numFoam : -1000;
 
     //! Index of the primary variable for temperature
     static constexpr int temperatureIdx  =
-        enableEnergy ? PVOffset + numPhases + numSolvents + numExtbos + numPolymers + numMICPs + numFoam + numBrine : - 1000;
+        enableEnergy ? PVOffset + numPhases + numSolvents + numExtbos + numPolymers + numMICPs + numBiofilms + numFoam + numBrine : - 1000;
 
 
     ////////
@@ -223,17 +234,21 @@ struct BlackOilIndices
     static constexpr int contiCalciteEqIdx =
         numMICPs > 4 ? contiBiofilmEqIdx + 1 : -1000;
 
+    //! Index of the continuity equation for the first biofilm
+    static const int contiBiofilmsEqIdx = 
+        enableBiofilm ? PVOffset + numPhases + numSolvents + numExtbos : -1000;
+
     //! Index of the continuity equation for the foam component
     static constexpr int contiFoamEqIdx =
-        enableFoam ? PVOffset + numPhases + numSolvents + numExtbos + numPolymers + numMICPs : -1000;
+        enableFoam ? PVOffset + numPhases + numSolvents + numExtbos + numPolymers + numMICPs + numBiofilms : -1000;
 
     //! Index of the continuity equation for the salt water component
     static constexpr int contiBrineEqIdx =
-        enableBrine ? PVOffset + numPhases + numSolvents + numExtbos + numPolymers + numMICPs + numFoam : -1000;
+        enableBrine ? PVOffset + numPhases + numSolvents + numExtbos + numPolymers + numMICPs + numBiofilms + numFoam : -1000;
 
     //! Index of the continuity equation for energy
     static constexpr int contiEnergyEqIdx =
-        enableEnergy ? PVOffset + numPhases + numSolvents + numExtbos + numPolymers + numMICPs + numFoam + numBrine: -1000;
+        enableEnergy ? PVOffset + numPhases + numSolvents + numExtbos + numPolymers + numMICPs + numBiofilms + numFoam + numBrine: -1000;
 };
 
 } // namespace Opm

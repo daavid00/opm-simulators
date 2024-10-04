@@ -124,6 +124,7 @@ protected:
     enum { enableExtbo = getPropValue<TypeTag, Properties::EnableExtbo>() };
     enum { enableFoam = getPropValue<TypeTag, Properties::EnableFoam>() };
     enum { enableMICP = getPropValue<TypeTag, Properties::EnableMICP>() };
+    enum { enableBiofilm = getPropValue<TypeTag, Properties::EnableBiofilm>() };
     enum { enablePolymer = getPropValue<TypeTag, Properties::EnablePolymer>() };
     enum { enablePolymerMolarWeight = getPropValue<TypeTag, Properties::EnablePolymerMW>() };
     enum { enableSaltPrecipitation = getPropValue<TypeTag, Properties::EnableSaltPrecipitation>() };
@@ -1113,6 +1114,7 @@ public:
         double trans_mult = implicit ? this->simulator().problem().template computeRockCompTransMultiplier_<double>(intQuants, elementIdx)
                                      : this->simulator().problem().getRockCompTransMultVal(elementIdx);
         trans_mult *= this->simulator().problem().template permFactTransMultiplier<double>(intQuants, elementIdx);
+        trans_mult *= this->simulator().problem().template permPoroTransMultiplier<double>(intQuants, elementIdx);
     
         return trans_mult;
     }

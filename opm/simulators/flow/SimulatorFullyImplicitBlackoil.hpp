@@ -109,6 +109,7 @@ public:
     using TimeStepper = AdaptiveTimeStepping<TypeTag>;
     using PolymerModule = BlackOilPolymerModule<TypeTag>;
     using MICPModule = BlackOilMICPModule<TypeTag>;
+    using BiofilmModule = BlackOilBiofilmModule<TypeTag>;
 
 
     using Solver = NonlinearSolver<TypeTag, Model>;
