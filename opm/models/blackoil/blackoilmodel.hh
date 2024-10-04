@@ -44,6 +44,7 @@
 #include <opm/models/blackoil/blackoilintensivequantities.hh>
 #include <opm/models/blackoil/blackoillocalresidual.hh>
 #include <opm/models/blackoil/blackoilmicpmodules.hh>
+#include <opm/models/blackoil/blackoilbiofilmmodules.hh>
 #include <opm/models/blackoil/blackoilnewtonmethod.hpp>
 #include <opm/models/blackoil/blackoilpolymermodules.hh>
 #include <opm/models/blackoil/blackoilprimaryvariables.hh>
@@ -129,7 +130,8 @@ struct Indices<TypeTag, TTag::BlackOilModel>
                                getPropValue<TypeTag, Properties::EnableFoam>(),
                                getPropValue<TypeTag, Properties::EnableBrine>(),
                                /*PVOffset=*/0,
-                               getPropValue<TypeTag, Properties::EnableMICP>()>; };
+                               getPropValue<TypeTag, Properties::EnableMICP>(),
+                               getPropValue<TypeTag, Properties::EnableBiofilm>()>; };
 
 //! Set the fluid system to the black-oil fluid system by default
 template<class TypeTag>
@@ -162,6 +164,8 @@ template<class TypeTag>
 struct EnableSaltPrecipitation<TypeTag, TTag::BlackOilModel> { static constexpr bool value = false; };
 template<class TypeTag>
 struct EnableMICP<TypeTag, TTag::BlackOilModel> { static constexpr bool value = false; };
+template<class TypeTag>
+struct EnableBiofilm<TypeTag, TTag::BlackOilModel> { static constexpr bool value = false; };
 
 //! By default, the blackoil model is isothermal and does not conserve energy
 template<class TypeTag>
@@ -302,6 +306,7 @@ private:
     using DiffusionModule = BlackOilDiffusionModule<TypeTag, enableDiffusion>;
     using DispersionModule = BlackOilDispersionModule<TypeTag, enableDispersion>;
     using MICPModule = BlackOilMICPModule<TypeTag>;
+    using BiofilmModule = BlackOilBiofilmModule<TypeTag>;
 
 public:
 
@@ -326,6 +331,7 @@ public:
         EnergyModule::registerParameters();
         DiffusionModule::registerParameters();
         MICPModule::registerParameters();
+        BiofilmModule::registerParameters();
 
         // register runtime parameters of the VTK output modules
         VtkBlackOilModule<TypeTag>::registerParameters();
@@ -597,6 +603,7 @@ protected:
         PolymerModule::registerOutputModules(asImp_(), this->simulator_);
         EnergyModule::registerOutputModules(asImp_(), this->simulator_);
         MICPModule::registerOutputModules(asImp_(), this->simulator_);
+        BiofilmModule::registerOutputModules(asImp_(), this->simulator_);
 
         this->addOutputModule(new VtkBlackOilModule<TypeTag>(this->simulator_));
         this->addOutputModule(new VtkCompositionModule<TypeTag>(this->simulator_));

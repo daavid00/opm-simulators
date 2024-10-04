@@ -39,6 +39,7 @@
 #include "blackoilconvectivemixingmodule.hh"
 #include "blackoildispersionmodule.hh"
 #include "blackoilmicpmodules.hh"
+#include "blackoilbiofilmmodules.hh"
 #include <opm/material/fluidstates/BlackOilFluidState.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/FaceDir.hpp>
 #include <opm/input/eclipse/Schedule/BCProp.hpp>
@@ -97,6 +98,7 @@ class BlackOilLocalResidualTPFA : public GetPropType<TypeTag, Properties::DiscLo
     static constexpr bool enableDispersion = getPropValue<TypeTag, Properties::EnableDispersion>();
     static constexpr bool enableConvectiveMixing = getPropValue<TypeTag, Properties::EnableConvectiveMixing>();
     static constexpr bool enableMICP = getPropValue<TypeTag, Properties::EnableMICP>();
+    static constexpr bool enableBiofilm = getPropValue<TypeTag, Properties::EnableBiofilm>();
 
     using SolventModule = BlackOilSolventModule<TypeTag>;
     using ExtboModule = BlackOilExtboModule<TypeTag>;
@@ -110,6 +112,7 @@ class BlackOilLocalResidualTPFA : public GetPropType<TypeTag, Properties::DiscLo
 
     using DispersionModule = BlackOilDispersionModule<TypeTag, enableDispersion>;
     using MICPModule = BlackOilMICPModule<TypeTag>;
+    using BiofilmModule = BlackOilBiofilmModule<TypeTag>;
 
     using Toolbox = MathToolbox<Evaluation>;
 
@@ -224,6 +227,9 @@ public:
 
         // deal with micp (if present)
         MICPModule::addStorage(storage, intQuants);
+
+        // deal with biofilm (if present)
+        BiofilmModule::addStorage(storage, intQuants);
     }
 
     /*!
@@ -501,6 +507,10 @@ public:
         static_assert(!enableMICP, "Relevant computeFlux() method must be implemented for this module before enabling.");
         // MICPModule::computeFlux(flux, elemCtx, scvfIdx, timeIdx);
 
+        // deal with biofilm (if present)
+        static_assert(!enableBiofilm, "Relevant computeFlux() method must be implemented for this module before enabling.");
+        // BiofilmModule::computeFlux(flux, elemCtx, scvfIdx, timeIdx);
+
     }
 
     template <class BoundaryConditionData>
@@ -628,6 +638,7 @@ public:
         static_assert(!enableSolvent, "Relevant treatment of boundary conditions must be implemented before enabling.");
         static_assert(!enablePolymer, "Relevant treatment of boundary conditions must be implemented before enabling.");
         static_assert(!enableMICP, "Relevant treatment of boundary conditions must be implemented before enabling.");
+        static_assert(!enableBiofilm, "Relevant treatment of boundary conditions must be implemented before enabling.");
 
         // make sure that the right mass conservation quantities are used
         adaptMassConservationQuantities_(bdyFlux, insideIntQuants.pvtRegionIndex());
@@ -688,6 +699,10 @@ public:
         // deal with micp (if present)
         static_assert(!enableMICP, "Relevant addSource() method must be implemented for this module before enabling.");
         // MICPModule::addSource(source, elemCtx, dofIdx, timeIdx);
+
+        // deal with biofilm (if present)
+        static_assert(!enableBiofilm, "Relevant addSource() method must be implemented for this module before enabling.");
+        // BiofilmModule::addSource(source, elemCtx, dofIdx, timeIdx);
 
         // scale the source term of the energy equation
         if (enableEnergy)

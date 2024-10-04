@@ -125,7 +125,8 @@ public:
                    getPropValue<TypeTag, Properties::EnableBrine>(),
                    getPropValue<TypeTag, Properties::EnableSaltPrecipitation>(),
                    getPropValue<TypeTag, Properties::EnableExtbo>(),
-                   getPropValue<TypeTag, Properties::EnableMICP>())
+                   getPropValue<TypeTag, Properties::EnableMICP>(),
+                   getPropValue<TypeTag, Properties::EnableBiofilm>())
         , simulator_(simulator)
     {
         for (auto& region_pair : this->regions_) {
@@ -433,6 +434,10 @@ public:
                 this->permFact_[globalDofIdx] = intQuants.permFactor().value();
             }
 
+            if (!this->permPoro_.empty()) {
+                this->permPoro_[globalDofIdx] = intQuants.permPoro().value();
+            }
+
             if (!this->rPorV_.empty()) {
                 const auto totVolume = elemCtx.simulator().model().dofTotalVolume(globalDofIdx);
                 this->rPorV_[globalDofIdx] = totVolume * intQuants.porosity().value();
@@ -473,6 +478,14 @@ public:
                                     10 * intQuants.ureaConcentration().value(),
                                     intQuants.biofilmConcentration().value(),
                                     intQuants.calciteConcentration().value());
+            }
+
+            if (!this->cBiofilms_.empty()) {
+                this->cBiofilms_[globalDofIdx] = intQuants.biofilmsConcentration().value();
+            }
+
+            if (!this->cBiofMass_.empty()) {
+                this->cBiofMass_[globalDofIdx] = intQuants.biofilmMass().value();
             }
 
             if (!this->bubblePointPressure_.empty()) {
@@ -1487,6 +1500,7 @@ private:
 
         const auto& fs = intQuants.fluidState();
         const auto  pv = totVolume * intQuants.porosity().value();
+        const auto  initPv = totVolume * intQuants.referencePorosity();
 
         for (unsigned phaseIdx = 0; phaseIdx < FluidSystem::numPhases; ++phaseIdx) {
             if (!FluidSystem::phaseIsActive(phaseIdx)) {
@@ -1528,6 +1542,16 @@ private:
              FluidSystem::phaseIsActive(oilPhaseIdx)))
         {
             this->updateCO2InWater(globalDofIdx, pv, fs);
+        }
+
+        if (this->fipC_.hasBiofilmMass())
+        {
+            this->updateBiofilmMass(globalDofIdx, initPv, fs);
+        }
+
+        if (this->fipC_.hasWaterMass())
+        {
+            this->updateWaterMass(globalDofIdx, fs, fip);
         }
     }
 
@@ -1621,6 +1645,29 @@ private:
         const Scalar mM = FluidSystem::molarMass(gasCompIdx, fs.pvtRegionIndex());
 
         this->fipC_.assignCo2InWater(globalDofIdx, co2InWater, mM);
+    }
+
+    template <typename FluidState>
+    void updateBiofilmMass(const unsigned    globalDofIdx,
+                           const double      initPv,
+                           const FluidState& fs)
+    {
+        const Scalar rhob = this->simulator_.problem().biofilmDensity(globalDofIdx);
+        const Scalar frab = this->simulator_.problem().eclWriter()->outputModule().getBiofilmsConcentration(globalDofIdx);
+        const Scalar biofilmMass = frab * rhob * initPv;
+
+        this->fipC_.assignBiofilmMass(globalDofIdx, biofilmMass);
+    }
+
+    template <typename FluidState, typename FIPArray>
+    void updateWaterMass(const unsigned    globalDofIdx,
+                         const FluidState& fs,
+                         const FIPArray&   fip
+                         )
+    {
+        const Scalar rhoW = FluidSystem::referenceDensity(waterPhaseIdx, fs.pvtRegionIndex());
+
+        this->fipC_.assignWaterMass(globalDofIdx, fip, rhoW);
     }
 
     template <typename FluidState>

@@ -106,7 +106,8 @@ public:
                    getPropValue<TypeTag, Properties::EnableBrine>(),
                    getPropValue<TypeTag, Properties::EnableSaltPrecipitation>(),
                    getPropValue<TypeTag, Properties::EnableExtbo>(),
-                   getPropValue<TypeTag, Properties::EnableMICP>())
+                   getPropValue<TypeTag, Properties::EnableMICP>(),
+                   getPropValue<TypeTag, Properties::EnableBiofilm>())
         , simulator_(simulator)
     {
         for (auto& region_pair : this->regions_) {

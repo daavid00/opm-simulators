@@ -192,11 +192,32 @@ public:
         return 0;
     }
 
-    const std::vector<Scalar>& getFluidPressure() const
-    { return fluidPressure_; }
+    Scalar getPermPoro(unsigned elemIdx) const
+    {
+        if (permPoro_.size() > elemIdx)
+            return permPoro_[elemIdx];
+
+        return 0;
+    }
 
     const MICPContainer<Scalar>& getMICP() const
     { return this->micpC_; }
+
+    Scalar getBiofilmsConcentration(unsigned elemIdx) const
+    {
+        if (cBiofilms_.size() > elemIdx)
+            return cBiofilms_[elemIdx];
+
+        return 0;
+    }
+
+    Scalar getBiofilmMass(unsigned elemIdx) const
+    {
+        if (cBiofMass_.size() > elemIdx)
+            return cBiofMass_[elemIdx];
+
+        return 0;
+    }
 
     const std::array<FlowsData<double>, 3>& getFlowsn() const
     {
@@ -314,7 +335,8 @@ protected:
                                 bool enableBrine,
                                 bool enableSaltPrecipitation,
                                 bool enableExtbo,
-                                bool enableMICP);
+                                bool enableMICP,
+                                bool enableBiofilm);
 
     void doAllocBuffers(unsigned bufferSize,
                         unsigned reportStepNum,
@@ -380,6 +402,7 @@ protected:
     bool enableSaltPrecipitation_{false};
     bool enableExtbo_{false};
     bool enableMICP_{false};
+    bool enableBiofilm_{false};
 
     bool forceDisableFipOutput_{false};
     bool forceDisableFipresvOutput_{false};
@@ -425,6 +448,7 @@ protected:
     ScalarBuffer cSalt_;
     ScalarBuffer pSalt_;
     ScalarBuffer permFact_;
+    ScalarBuffer permPoro_;
     ExtboContainer<Scalar> extboC_;
     ScalarBuffer soMax_;
     ScalarBuffer swMax_;
@@ -444,6 +468,8 @@ protected:
     ScalarBuffer saturatedOilFormationVolumeFactor_;
     ScalarBuffer rockCompTransMultiplier_;
     MICPContainer<Scalar> micpC_;
+    ScalarBuffer cBiofilms_;
+    ScalarBuffer cBiofMass_;
     ScalarBuffer pcgw_;
     ScalarBuffer pcow_;
     ScalarBuffer pcog_;
