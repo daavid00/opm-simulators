@@ -220,6 +220,9 @@ protected:
     void updatePolymer(const ElementContext& elemCtx, unsigned scvfIdx, unsigned timeIdx)
     { asImp_().updateShearMultipliers(elemCtx, scvfIdx, timeIdx); }
 
+    void updateBiofilm(const ElementContext& elemCtx, unsigned scvfIdx, unsigned timeIdx)
+    { asImp_().updateBiofilmFluxTrans(elemCtx, scvfIdx, timeIdx); }
+
 public:
 
     static void volumeAndPhasePressureDifferences(std::array<short, numPhases>& upIdx,

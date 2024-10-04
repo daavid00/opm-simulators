@@ -37,6 +37,7 @@
 #include "blackoilbrinemodules.hh"
 #include "blackoildiffusionmodule.hh"
 #include "blackoilmicpmodules.hh"
+#include "blackoilbiofilmmodules.hh"
 #include "blackoilconvectivemixingmodule.hh"
 #include <opm/material/fluidstates/BlackOilFluidState.hpp>
 
@@ -92,6 +93,7 @@ class BlackOilLocalResidual : public GetPropType<TypeTag, Properties::DiscLocalR
     using BrineModule = BlackOilBrineModule<TypeTag>;
     using DiffusionModule = BlackOilDiffusionModule<TypeTag, enableDiffusion>;
     using MICPModule = BlackOilMICPModule<TypeTag>;
+    using BiofilmModule = BlackOilBiofilmModule<TypeTag>;
     using ConvectiveMixingModule = BlackOilConvectiveMixingModule<TypeTag, enableConvectiveMixing>;
 
 public:
@@ -185,6 +187,9 @@ public:
 
         // deal with micp (if present)
         MICPModule::addStorage(storage, intQuants);
+
+        // deal with biofilm (if present)
+        BiofilmModule::addStorage(storage, intQuants);
     }
 
     /*!
@@ -234,6 +239,9 @@ public:
         // deal with micp (if present)
         MICPModule::computeFlux(flux, elemCtx, scvfIdx, timeIdx);
 
+        // deal with biofilm (if present)
+        BiofilmModule::computeFlux(flux, elemCtx, scvfIdx, timeIdx);
+
         DiffusionModule::addDiffusiveFlux(flux, elemCtx, scvfIdx, timeIdx);
 
         // deal with convective mixing (if enabled)
@@ -253,6 +261,9 @@ public:
 
         // deal with MICP (if present)
         MICPModule::addSource(source, elemCtx, dofIdx, timeIdx);
+
+        // deal with biofilm (if present)
+        BiofilmModule::addSource(source, elemCtx, dofIdx, timeIdx);
 
         // scale the source term of the energy equation
         if (enableEnergy)

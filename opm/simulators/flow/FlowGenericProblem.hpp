@@ -108,6 +108,10 @@ public:
      */
     Scalar maxWaterSaturation(unsigned globalDofIdx) const;
 
+    Scalar biofilmsConcentration(unsigned globalDofIdx) const;
+
+    Scalar biofilmDensity(unsigned globalDofIdx) const;
+
     /*!
      * \brief Returns an element's historic minimum pressure of the oil phase that was
      *        observed during the simulation.
@@ -270,6 +274,8 @@ public:
         serializer(overburdenPressure_);
         serializer(solventSaturation_);
         serializer(solventRsw_);
+        serializer(biofilmsConcentration_);
+        serializer(biofilmDensity_);
         serializer(micp_);
     }
 
@@ -309,7 +315,8 @@ protected:
                                                   bool enableSolvent,
                                                   bool enablePolymer,
                                                   bool enablePolymerMolarWeight,
-                                                  bool enableMICP);
+                                                  bool enableMICP,
+                                                  bool enableBiofilm);
 
     void updatePvtnum_();
     void updateSatnum_();
@@ -344,6 +351,8 @@ protected:
     std::vector<Scalar> solventSaturation_;
     std::vector<Scalar> solventRsw_;
     MICPSolutionContainer<Scalar> micp_;
+    std::vector<Scalar> biofilmsConcentration_;
+    std::vector<Scalar> biofilmDensity_;
 
     // time stepping parameters
     bool enableTuning_;
