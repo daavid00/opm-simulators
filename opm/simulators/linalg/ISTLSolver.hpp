@@ -204,6 +204,8 @@ std::unique_ptr<Matrix> blockJacobiAdjacency(const Grid& grid,
             : simulator_(simulator),
               iterations_( 0 ),
               solveCount_(0),
+              stepCount_(0),
+              iterCount_(0),
               converged_(false),
               matrix_(nullptr)
         {
@@ -407,6 +409,10 @@ std::unique_ptr<Matrix> blockJacobiAdjacency(const Grid& grid,
             solveCount_ = 0;
         }
 
+        void resetIterCount() {
+            iterCount_ = 0;
+        }
+
         bool solve(Vector& x)
         {
             OPM_TIMEBLOCK(istlSolverSolve);
@@ -420,15 +426,48 @@ std::unique_ptr<Matrix> blockJacobiAdjacency(const Grid& grid,
                                     *rhs_,
                                     comm_.get());
             }
-
+            if (iterCount_ == 0 && simulator_.episodeIndex() == 0){
+                auto output = this->simulator_.vanguard().eclState().getIOConfig().fullBasePath();
+                auto path = output.substr(0, output.size()-22) + "bestpath.csv";
+                std::string data(path);
+                std::ifstream in(data.c_str());
+                std::string line;
+                while (getline(in, line))
+                {
+                    std::stringstream ss(line);
+                    std::string substr;
+                    while (std::getline(ss, substr, '[') && !ss.eof());
+                    std::stringstream int_ss(substr);
+                    std::vector<Scalar> nums;
+                    Scalar num;
+                    while (int_ss >> num) {
+                        nums.push_back(num);
+                        if (int_ss.peek() == ',') {
+                            int_ss.ignore();
+                        }
+                    }
+                    bestpaths_.push_back(nums);
+                }
+            }
+            Scalar reduction = bestpaths_[stepCount_][1];
+            if (stepCount_ < simulator_.episodeIndex()){
+                ++stepCount_;
+                resetIterCount();
+            }
+            if (iterCount_ < bestpaths_[stepCount_].size() - 2)
+                reduction = bestpaths_[stepCount_][iterCount_ + 2];
+            else
+                reduction = bestpaths_[stepCount_][1];
+            //std::cout << reduction << std::endl;
+            //std::cout << iterCount_ << std::endl;
             // Solve system.
             Dune::InverseOperatorResult result;
             {
                 OPM_TIMEBLOCK(flexibleSolverApply);
                 assert(flexibleSolver_[activeSolverNum_].solver_);
-                flexibleSolver_[activeSolverNum_].solver_->apply(x, *rhs_, result);
+                flexibleSolver_[activeSolverNum_].solver_->apply(x, *rhs_, reduction, result);
             }
-
+            ++iterCount_;
             // Check convergence, iterations etc.
             checkConvergence(result);
 
@@ -656,6 +695,8 @@ std::unique_ptr<Matrix> blockJacobiAdjacency(const Grid& grid,
         const Simulator& simulator_;
         mutable int iterations_;
         mutable int solveCount_;
+        mutable int stepCount_;
+        mutable int iterCount_;
         mutable bool converged_;
         std::any parallelInformation_;
 
@@ -675,6 +716,7 @@ std::unique_ptr<Matrix> blockJacobiAdjacency(const Grid& grid,
         std::vector<FlowLinearSolverParameters> parameters_;
         bool forceSerial_ = false;
         std::vector<PropertyTree> prm_;
+        std::vector<std::vector<Scalar>> bestpaths_;
 
         std::shared_ptr< CommunicationType > comm_;
     }; // end ISTLSolver
