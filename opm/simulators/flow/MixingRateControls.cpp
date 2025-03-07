@@ -248,7 +248,7 @@ maxGasDissolutionFactor(const unsigned timeIdx,
                         const int episodeIdx,
                         const int pvtRegionIdx) const
 {
-    if (!this->drsdtActive(episodeIdx, pvtRegionIdx)) {
+    if (!this->drsdtActive(episodeIdx, pvtRegionIdx) || (lastRs_.empty())) {
         return std::numeric_limits<Scalar>::max() / 2.0;
     }
 
