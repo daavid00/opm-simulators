@@ -118,7 +118,8 @@ class BlackOilDispersionModule<TypeTag, /*enableDispersion=*/true>
     enum { numComponents = FluidSystem::numComponents };
     enum { conti0EqIdx = Indices::conti0EqIdx };
     enum { enableDispersion = getPropValue<TypeTag, Properties::EnableDispersion>() };
-    enum { enableMICP = getPropValue<TypeTag, Properties::EnableMICP>() };
+    enum { enableBioeffects = getPropValue<TypeTag, Properties::EnableBioeffects>() };
+    enum { enableMICP = Indices::enableMICP };
 
     static constexpr unsigned contiMicrobialEqIdx = Indices::contiMicrobialEqIdx;
     static constexpr unsigned contiOxygenEqIdx = Indices::contiOxygenEqIdx;
@@ -193,28 +194,30 @@ public:
         const auto& inFs = inIq.fluidState();
         const auto& exFs = exIq.fluidState();
         Evaluation diffR = 0.0;
-        if constexpr(enableMICP) {
+        if constexpr(enableBioeffects) {
             // The dispersion coefficients are given for mass concentrations
             Evaluation bAvg = (inFs.invB(waterPhaseIdx) + Toolbox::value(exFs.invB(waterPhaseIdx))) / 2;
-            diffR = inIq.microbialConcentration()- Toolbox::value(exIq.microbialConcentration());
+            diffR = inIq.microbialConcentration() - Toolbox::value(exIq.microbialConcentration());
             flux[contiMicrobialEqIdx] +=
                  bAvg
                  * normVelocityAvg[waterPhaseIdx]
                  * dispersivity
                  * diffR;
-            diffR = inIq.oxygenConcentration()- Toolbox::value(exIq.oxygenConcentration());
-            flux[contiOxygenEqIdx] +=
-                 bAvg
-                 * normVelocityAvg[waterPhaseIdx]
-                 * dispersivity
-                 * diffR;
-            diffR = inIq.ureaConcentration()- Toolbox::value(exIq.ureaConcentration());
-            flux[contiUreaEqIdx] +=
-                 bAvg
-                 * normVelocityAvg[waterPhaseIdx]
-                 * dispersivity
-                 * diffR;
-            return;
+            if constexpr(enableMICP) {
+                diffR = inIq.oxygenConcentration() - Toolbox::value(exIq.oxygenConcentration());
+                flux[contiOxygenEqIdx] +=
+                    bAvg
+                    * normVelocityAvg[waterPhaseIdx]
+                    * dispersivity
+                    * diffR;
+                diffR = inIq.ureaConcentration() - Toolbox::value(exIq.ureaConcentration());
+                flux[contiUreaEqIdx] +=
+                    bAvg
+                    * normVelocityAvg[waterPhaseIdx]
+                    * dispersivity
+                    * diffR;
+                return;
+            }
         }
 
         unsigned pvtRegionIndex = inFs.pvtRegionIndex();

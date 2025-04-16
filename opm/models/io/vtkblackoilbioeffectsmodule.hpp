@@ -22,10 +22,10 @@
 */
 /*!
  * \file
- * \copydoc Opm::VtkBlackOilMICPModule
+ * \copydoc Opm::VtkBlackOilBioeffectsModule
  */
-#ifndef OPM_VTK_BLACK_OIL_MICP_MODULE_HPP
-#define OPM_VTK_BLACK_OIL_MICP_MODULE_HPP
+#ifndef OPM_VTK_BLACK_OIL_BIOEFFECTS_MODULE_HPP
+#define OPM_VTK_BLACK_OIL_BIOEFFECTS_MODULE_HPP
 
 #include <dune/common/fvector.hh>
 
@@ -36,7 +36,7 @@
 #include <opm/models/discretization/common/fvbaseparameters.hh>
 
 #include <opm/models/io/baseoutputmodule.hh>
-#include <opm/models/io/vtkblackoilmicpparams.hpp>
+#include <opm/models/io/vtkblackoilbioeffectsparams.hpp>
 #include <opm/models/io/vtkmultiwriter.hh>
 
 #include <opm/models/utils/parametersystem.hpp>
@@ -49,7 +49,7 @@ namespace Opm {
  * \brief VTK output module for the MICP model's related quantities.
  */
 template <class TypeTag>
-class VtkBlackOilMICPModule : public BaseOutputModule<TypeTag>
+class VtkBlackOilBioeffectsModule : public BaseOutputModule<TypeTag>
 {
     using ParentType = BaseOutputModule<TypeTag>;
 
@@ -58,20 +58,22 @@ class VtkBlackOilMICPModule : public BaseOutputModule<TypeTag>
     using Scalar = GetPropType<TypeTag, Properties::Scalar>;
     using Evaluation = GetPropType<TypeTag, Properties::Evaluation>;
     using ElementContext = GetPropType<TypeTag, Properties::ElementContext>;
+    using Indices = GetPropType<TypeTag, Properties::Indices>;
 
     static const int vtkFormat = getPropValue<TypeTag, Properties::VtkOutputFormat>();
     using VtkMultiWriter = ::Opm::VtkMultiWriter<GridView, vtkFormat>;
 
-    enum { enableMICP = getPropValue<TypeTag, Properties::EnableMICP>() };
+    enum { enableBioeffects = getPropValue<TypeTag, Properties::EnableBioeffects>() };
+    enum { enableMICP = Indices::enableMICP };
 
     using ScalarBuffer = typename ParentType::ScalarBuffer;
 
 public:
-    explicit VtkBlackOilMICPModule(const Simulator& simulator)
+    explicit VtkBlackOilBioeffectsModule(const Simulator& simulator)
         : ParentType(simulator)
     {
-        if constexpr (enableMICP) {
-            params_.read();
+        if constexpr (enableBioeffects) {
+            params_.read(enableMICP);
         }
     }
 
@@ -81,8 +83,8 @@ public:
      */
     static void registerParameters()
     {
-        if constexpr (enableMICP) {
-            VtkBlackoilMICPParams::registerParameters();
+        if constexpr (enableBioeffects) {
+            VtkBlackOilBioeffectsParams::registerParameters(enableMICP);
         }
     }
 
@@ -92,7 +94,7 @@ public:
      */
     void allocBuffers() override
     {
-        if constexpr (enableMICP) {
+        if constexpr (enableBioeffects) {
             if (!Parameters::Get<Parameters::EnableVtkOutput>()) {
                 return;
             }
@@ -100,17 +102,19 @@ public:
             if (params_.microbialConcentrationOutput_) {
                 this->resizeScalarBuffer_(microbialConcentration_);
             }
-            if (params_.oxygenConcentrationOutput_) {
-                this->resizeScalarBuffer_(oxygenConcentration_);
-            }
-            if (params_.ureaConcentrationOutput_) {
-                this->resizeScalarBuffer_(ureaConcentration_);
-            }
             if (params_.biofilmConcentrationOutput_) {
                 this->resizeScalarBuffer_(biofilmConcentration_);
             }
-            if (params_.calciteConcentrationOutput_) {
-                this->resizeScalarBuffer_(calciteConcentration_);
+            if constexpr (enableMICP) {
+                if (params_.oxygenConcentrationOutput_) {
+                    this->resizeScalarBuffer_(oxygenConcentration_);
+                }
+                if (params_.ureaConcentrationOutput_) {
+                    this->resizeScalarBuffer_(ureaConcentration_);
+                }
+                if (params_.calciteConcentrationOutput_) {
+                    this->resizeScalarBuffer_(calciteConcentration_);
+                }
             }
         }
     }
@@ -121,7 +125,7 @@ public:
      */
     void processElement(const ElementContext& elemCtx) override
     {
-        if constexpr (enableMICP) {
+        if constexpr (enableBioeffects) {
             if (!Parameters::Get<Parameters::EnableVtkOutput>()) {
                 return;
             }
@@ -134,25 +138,23 @@ public:
                     microbialConcentration_[globalDofIdx] =
                         scalarValue(intQuants.microbialConcentration());
                 }
-
-                if (params_.oxygenConcentrationOutput_) {
-                    oxygenConcentration_[globalDofIdx] =
-                        scalarValue(intQuants.oxygenConcentration());
-                }
-
-                if (params_.ureaConcentrationOutput_) {
-                    ureaConcentration_[globalDofIdx] =
-                        scalarValue(intQuants.ureaConcentration());
-                }
-
                 if (params_.biofilmConcentrationOutput_) {
                     biofilmConcentration_[globalDofIdx] =
                         scalarValue(intQuants.biofilmConcentration());
                 }
-
-                if (params_.calciteConcentrationOutput_) {
-                    calciteConcentration_[globalDofIdx] =
-                        scalarValue(intQuants.calciteConcentration());
+                if constexpr (enableMICP) {
+                    if (params_.oxygenConcentrationOutput_) {
+                        oxygenConcentration_[globalDofIdx] =
+                            scalarValue(intQuants.oxygenConcentration());
+                    }
+                    if (params_.ureaConcentrationOutput_) {
+                        ureaConcentration_[globalDofIdx] =
+                            scalarValue(intQuants.ureaConcentration());
+                    }
+                    if (params_.calciteConcentrationOutput_) {
+                        calciteConcentration_[globalDofIdx] =
+                            scalarValue(intQuants.calciteConcentration());
+                    }
                 }
             }
         }
@@ -163,36 +165,33 @@ public:
      */
     void commitBuffers(BaseOutputWriter& baseWriter) override
     {
-        if constexpr (enableMICP) {
+        if constexpr (enableBioeffects) {
             VtkMultiWriter* vtkWriter = dynamic_cast<VtkMultiWriter*>(&baseWriter);
             if (!vtkWriter) {
                 return;
             }
-
             if (params_.microbialConcentrationOutput_) {
                 this->commitScalarBuffer_(baseWriter, "microbial concentration", microbialConcentration_);
             }
-
-            if (params_.oxygenConcentrationOutput_) {
-                this->commitScalarBuffer_(baseWriter, "oxygen concentration", oxygenConcentration_);
-            }
-
-            if (params_.ureaConcentrationOutput_) {
-                this->commitScalarBuffer_(baseWriter, "urea concentration", ureaConcentration_);
-            }
-
             if (params_.biofilmConcentrationOutput_) {
                 this->commitScalarBuffer_(baseWriter, "biofilm fraction", biofilmConcentration_);
             }
-
-            if (params_.calciteConcentrationOutput_) {
-                this->commitScalarBuffer_(baseWriter, "calcite fraction", calciteConcentration_);
+            if constexpr (enableMICP) {
+                if (params_.oxygenConcentrationOutput_) {
+                    this->commitScalarBuffer_(baseWriter, "oxygen concentration", oxygenConcentration_);
+                }
+                if (params_.ureaConcentrationOutput_) {
+                    this->commitScalarBuffer_(baseWriter, "urea concentration", ureaConcentration_);
+                }
+                if (params_.calciteConcentrationOutput_) {
+                    this->commitScalarBuffer_(baseWriter, "calcite fraction", calciteConcentration_);
+                }
             }
         }
     }
 
 private:
-    VtkBlackoilMICPParams params_{};
+    VtkBlackOilBioeffectsParams params_{};
     ScalarBuffer microbialConcentration_{};
     ScalarBuffer oxygenConcentration_{};
     ScalarBuffer ureaConcentration_{};
@@ -202,4 +201,4 @@ private:
 
 } // namespace Opm
 
-#endif // OPM_VTK_BLACKOIL_MICP_MODULE_HPP
+#endif // OPM_VTK_BLACK_OIL_BIOEFFECTS_MODULE_HPP

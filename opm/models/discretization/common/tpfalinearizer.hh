@@ -91,6 +91,7 @@ class TpfaLinearizer
     using Stencil = GetPropType<TypeTag, Properties::Stencil>;
     using LocalResidual = GetPropType<TypeTag, Properties::LocalResidual>;
     using IntensiveQuantities = GetPropType<TypeTag, Properties::IntensiveQuantities>;
+    using Indices = GetPropType<TypeTag, Properties::Indices>;
 
     using Element = typename GridView::template Codim<0>::Entity;
     using ElementIterator = typename GridView::template Codim<0>::Iterator;
@@ -108,7 +109,7 @@ class TpfaLinearizer
     static const bool linearizeNonLocalElements = getPropValue<TypeTag, Properties::LinearizeNonLocalElements>();
     static const bool enableEnergy = getPropValue<TypeTag, Properties::EnableEnergy>();
     static const bool enableDiffusion = getPropValue<TypeTag, Properties::EnableDiffusion>();
-    static const bool enableMICP = getPropValue<TypeTag, Properties::EnableMICP>();
+    static const bool enableBioeffects = getPropValue<TypeTag, Properties::EnableBioeffects>();
 
     // copying the linearizer is not a good idea
     TpfaLinearizer(const TpfaLinearizer&) = delete;
@@ -544,7 +545,7 @@ private:
                               simulator_().problem().eclWriter().outputModule().getFlows().hasBlockFlows();
         const bool anyFlores = simulator_().problem().eclWriter().outputModule().getFlows().anyFlores();
         const bool enableDispersion = simulator_().vanguard().eclState().getSimulationConfig().rock_config().dispersion();
-        if (((!anyFlows || !flowsInfo_.empty()) && (!anyFlores || !floresInfo_.empty())) && (!enableDispersion && !enableMICP)) {
+        if (((!anyFlows || !flowsInfo_.empty()) && (!anyFlores || !floresInfo_.empty())) && (!enableDispersion && !enableBioeffects)) {
             return;
         }
         const auto& model = model_();
@@ -570,7 +571,7 @@ private:
         if (anyFlores) {
             floresInfo_.reserve(numCells, 6 * numCells);
         }
-        if (enableDispersion || enableMICP) {
+        if (enableDispersion || enableBioeffects) {
             velocityInfo_.reserve(numCells, 6 * numCells);
         }
 
@@ -617,7 +618,7 @@ private:
                 if (anyFlores) {
                     floresInfo_.appendRow(loc_flinfo.begin(), loc_flinfo.end());
                 }
-                if (enableDispersion || enableMICP) {
+                if (enableDispersion || enableBioeffects) {
                     velocityInfo_.appendRow(loc_vlinfo.begin(), loc_vlinfo.end());
                 }
             }
@@ -670,7 +671,7 @@ public:
                 adres = 0.0;
                 darcyFlux = 0.0;
                 const IntensiveQuantities& intQuantsEx = model_().intensiveQuantities(globJ, /*timeIdx*/ 0);
-                LocalResidual::computeFlux(adres,darcyFlux, globI, globJ, intQuantsIn, intQuantsEx, nbInfo.res_nbinfo, problem_().moduleParams());
+                LocalResidual::computeFlux(adres, darcyFlux, globI, globJ, intQuantsIn, intQuantsEx, nbInfo.res_nbinfo, problem_().moduleParams());
                 adres *= nbInfo.res_nbinfo.faceArea;
                 if (enableFlows) {
                     for (unsigned eqIdx = 0; eqIdx < numEq; ++ eqIdx) {
@@ -756,9 +757,9 @@ private:
                 adres = 0.0;
                 darcyFlux = 0.0;
                 const IntensiveQuantities& intQuantsEx = model_().intensiveQuantities(globJ, /*timeIdx*/ 0);
-                LocalResidual::computeFlux(adres,darcyFlux, globI, globJ, intQuantsIn, intQuantsEx, nbInfo.res_nbinfo,  problem_().moduleParams());
+                LocalResidual::computeFlux(adres, darcyFlux, globI, globJ, intQuantsIn, intQuantsEx, nbInfo.res_nbinfo,  problem_().moduleParams());
                 adres *= nbInfo.res_nbinfo.faceArea;
-                if (enableDispersion || enableMICP) {
+                if (enableDispersion || enableBioeffects) {
                     for (unsigned phaseIdx = 0; phaseIdx < numEq; ++ phaseIdx) {
                         velocityInfo_[globI][loc].velocity[phaseIdx] = darcyFlux[phaseIdx].value() / nbInfo.res_nbinfo.faceArea;
                     }

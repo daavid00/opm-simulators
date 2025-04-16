@@ -55,6 +55,7 @@ Opm::PhaseUsage::PhaseUsage(std::vector<BlackoilPhases::PhaseIndex> phases)
     this->has_foam           = this->phase_used[BlackoilPhases::Foam];
     this->has_brine          = this->phase_used[BlackoilPhases::Brine];
     this->has_zFraction      = this->phase_used[BlackoilPhases::ZFraction];
+    this->has_bioeffects     = false;
     this->has_micp           = false;
     this->has_co2_or_h2store = false;
 }

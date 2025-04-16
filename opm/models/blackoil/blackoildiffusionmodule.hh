@@ -30,7 +30,9 @@
 
 #include <dune/common/fvector.hh>
 
-#include <opm/models/blackoil/blackoilmicpmodules.hh>
+#include <dune/common/fvector.hh>
+
+#include <opm/models/blackoil/blackoilbioeffectsmodules.hh>
 #include <opm/models/discretization/common/fvbaseproperties.hh>
 
 #include <opm/material/common/Valgrind.hpp>
@@ -102,12 +104,13 @@ class BlackOilDiffusionModule<TypeTag, /*enableDiffusion=*/true>
     using FluidSystem = GetPropType<TypeTag, Properties::FluidSystem>;
     using Indices = GetPropType<TypeTag, Properties::Indices>;
     using IntensiveQuantities = GetPropType<TypeTag, Properties::IntensiveQuantities>;
+    using BioeffectsModule = BlackOilBioeffectsModule<TypeTag>;
 
     enum { numPhases = FluidSystem::numPhases };
     enum { numComponents = FluidSystem::numComponents };
     enum { conti0EqIdx = Indices::conti0EqIdx };
-
-    enum { enableMICP = getPropValue<TypeTag, Properties::EnableMICP>() };
+    enum { enableBioeffects = getPropValue<TypeTag, Properties::EnableBioeffects>() };
+    enum { enableMICP = Indices::enableMICP };
 
     static constexpr unsigned contiMicrobialEqIdx = Indices::contiMicrobialEqIdx;
     static constexpr unsigned contiOxygenEqIdx = Indices::contiOxygenEqIdx;
@@ -171,6 +174,10 @@ public:
         const auto& diffusivity = extQuants.diffusivity();
         const auto& effectiveDiffusionCoefficient = extQuants.effectiveDiffusionCoefficient();
         addDiffusiveFlux(flux, inIq, exIq, diffusivity, effectiveDiffusionCoefficient);
+        if constexpr(enableBioeffects) {
+            const auto& effectiveBioDiffCoefficient = extQuants.effectiveBioDiffCoefficient();
+            addBioDiffFlux(flux, inIq, exIq, diffusivity, effectiveBioDiffCoefficient);
+        }
     }
 
     template<class IntensiveQuantities,class EvaluationArray>
@@ -182,32 +189,9 @@ public:
     {
         const auto& inFs = inIq.fluidState();
         const auto& exFs = exIq.fluidState();
-        Evaluation diffR = 0.0;
-        if constexpr(enableMICP) {
-            // The diffusion coefficients are given for mass concentrations
-            Evaluation bAvg = (inFs.invB(waterPhaseIdx) + Toolbox::value(exFs.invB(waterPhaseIdx))) / 2;
-            diffR = inIq.microbialConcentration() - Toolbox::value(exIq.microbialConcentration());
-            flux[contiMicrobialEqIdx] +=
-                bAvg
-                * diffR
-                * diffusivity
-                * effectiveDiffusionCoefficient[waterPhaseIdx][contiMicrobialEqIdx - 1];
-            diffR = inIq.oxygenConcentration() - Toolbox::value(exIq.oxygenConcentration());
-            flux[contiOxygenEqIdx] +=
-                bAvg
-                * diffR
-                * diffusivity
-                * effectiveDiffusionCoefficient[waterPhaseIdx][contiOxygenEqIdx - 1];
-            diffR = inIq.ureaConcentration() - Toolbox::value(exIq.ureaConcentration());
-            flux[contiUreaEqIdx] +=
-                bAvg
-                * diffR
-                * diffusivity
-                * effectiveDiffusionCoefficient[waterPhaseIdx][contiUreaEqIdx - 1];
-            return;
-        }
-
         unsigned pvtRegionIndex = inFs.pvtRegionIndex();
+        Evaluation diffR = 0.0;
+
         for (unsigned phaseIdx = 0; phaseIdx < numPhases; ++phaseIdx) {
             if (!FluidSystem::phaseIsActive(phaseIdx)) {
                 continue;
@@ -272,6 +256,43 @@ public:
                     * convFactor
                     * diffusivity
                     * effectiveDiffusionCoefficient[phaseIdx][soluteCompIdx];
+        }
+    }
+
+    template<class IntensiveQuantities,class EvaluationArray>
+    static void addBioDiffFlux(RateVector& flux,
+                                 const IntensiveQuantities& inIq,
+                                 const IntensiveQuantities& exIq,
+                                 const Evaluation& diffusivity,
+                                 const EvaluationArray& effectiveBioDiffCoefficient)
+    {
+        const auto& inFs = inIq.fluidState();
+        const auto& exFs = exIq.fluidState();
+        unsigned pvtRegionIndex = inFs.pvtRegionIndex();
+        Evaluation diffR = 0.0;
+
+        // The diffusion coefficients are given for mass concentrations
+        Evaluation bAvg = (inFs.saturation(waterPhaseIdx) * inFs.invB(waterPhaseIdx) + 
+            Toolbox::value(exFs.saturation(waterPhaseIdx)) * Toolbox::value(exFs.invB(waterPhaseIdx))) / 2;
+        diffR = inIq.microbialConcentration() - Toolbox::value(exIq.microbialConcentration());
+        flux[contiMicrobialEqIdx] +=
+            bAvg
+            * diffR
+            * diffusivity
+            * effectiveBioDiffCoefficient[0];
+        if constexpr(enableMICP) {
+            diffR = inIq.oxygenConcentration() - Toolbox::value(exIq.oxygenConcentration());
+            flux[contiOxygenEqIdx] +=
+                bAvg
+                * diffR
+                * diffusivity
+                * effectiveBioDiffCoefficient[contiOxygenEqIdx - 1];
+            diffR = inIq.ureaConcentration() - Toolbox::value(exIq.ureaConcentration());
+            flux[contiUreaEqIdx] +=
+                bAvg
+                * diffR
+                * diffusivity
+                * effectiveBioDiffCoefficient[contiUreaEqIdx - 1];
         }
     }
 
@@ -374,11 +395,14 @@ class BlackOilDiffusionIntensiveQuantities<TypeTag, /*enableDiffusion=*/true>
     using ElementContext = GetPropType<TypeTag, Properties::ElementContext>;
     using FluidSystem = GetPropType<TypeTag, Properties::FluidSystem>;
     using IntensiveQuantities = GetPropType<TypeTag, Properties::IntensiveQuantities>;
-    using MICPModule = BlackOilMICPModule<TypeTag>;
+    using Indices = GetPropType<TypeTag, Properties::Indices>;
+    using BioeffectsModule = BlackOilBioeffectsModule<TypeTag>;
 
     enum { numPhases = FluidSystem::numPhases };
     enum { numComponents = FluidSystem::numComponents };
-    enum { enableMICP = getPropValue<TypeTag, Properties::EnableMICP>() };
+    enum { enableBioeffects = getPropValue<TypeTag, Properties::EnableBioeffects>() };
+    enum { enableMICP = Indices::enableMICP };
+    enum { numBioInWat = Indices::numBioInWat };
 
     static constexpr unsigned waterPhaseIdx = FluidSystem::waterPhaseIdx;
 
@@ -433,6 +457,27 @@ public:
         return diffusionCoefficient_[phaseIdx][compIdx];
     }
 
+    /*!
+     * \brief Returns the molecular diffusion coefficient for a
+     *        biocomponent in the water phase.
+     */
+    Evaluation bioDiffCoefficient(unsigned compIdx) const
+    { return bioDiffCoefficient_[compIdx]; }
+
+    /*!
+     * \brief Returns the effective molecular diffusion coefficient of
+     *        the porous medium for a biocomponent in the water phase.
+     */
+    Evaluation effectiveBioDiffCoefficient(unsigned compIdx) const
+    {
+        // TODO add a run-time parameter to enable tortuosity
+        static bool enableTortuosity = false;
+        if (enableTortuosity)
+            return tortuosity_[waterPhaseIdx] * bioDiffCoefficient_[compIdx];
+
+        return bioDiffCoefficient_[compIdx];
+    }
+
 protected:
     /*!
      * \brief Update the quantities required to calculate diffusive
@@ -457,14 +502,6 @@ protected:
                  typename FluidSystem::template ParameterCache<typename FluidState::Scalar>& paramCache,
                  const IntensiveQuantities& intQuants) {
         using Toolbox = MathToolbox<Evaluation>;
-
-        if constexpr(enableMICP) {
-            unsigned pvtRegionIndex = intQuants.fluidState().pvtRegionIndex();
-            diffusionCoefficient_[waterPhaseIdx][0] = MICPModule::microbialDiffusion(pvtRegionIndex);
-            diffusionCoefficient_[waterPhaseIdx][1] = MICPModule::oxygenDiffusion(pvtRegionIndex);
-            diffusionCoefficient_[waterPhaseIdx][2] = MICPModule::ureaDiffusion(pvtRegionIndex);
-            return;
-        }
 
         for (unsigned phaseIdx = 0; phaseIdx < numPhases; ++phaseIdx) {
             if (!FluidSystem::phaseIsActive(phaseIdx)) {
@@ -496,11 +533,20 @@ protected:
                                                       compIdx);
             }
         }
+
+        if constexpr(enableBioeffects) {
+            unsigned pvtRegionIndex = intQuants.pvtRegionIndex();
+            for (unsigned compIdx = 0; compIdx < numBioInWat; ++compIdx) {
+                bioDiffCoefficient_[compIdx] =
+                    BioeffectsModule::bioDiffCoefficient(pvtRegionIndex, compIdx);
+            }
+        }
     }
 
 private:
     Evaluation tortuosity_[numPhases];
     Evaluation diffusionCoefficient_[numPhases][numComponents];
+    Evaluation bioDiffCoefficient_[numBioInWat];
 };
 
 /*!
@@ -579,11 +625,14 @@ class BlackOilDiffusionExtensiveQuantities<TypeTag, /*enableDiffusion=*/true>
     using FluidSystem = GetPropType<TypeTag, Properties::FluidSystem>;
     using Toolbox = MathToolbox<Evaluation>;
     using IntensiveQuantities = GetPropType<TypeTag, Properties::IntensiveQuantities>;
+    using Indices = GetPropType<TypeTag, Properties::Indices>;
 
     enum { dimWorld = GridView::dimensionworld };
     enum { numPhases = getPropValue<TypeTag, Properties::NumPhases>() };
     enum { numComponents = getPropValue<TypeTag, Properties::NumComponents>() };
-    enum { enableMICP = getPropValue<TypeTag, Properties::EnableMICP>() };
+    enum { enableBioeffects = getPropValue<TypeTag, Properties::EnableBioeffects>() };
+    enum { enableMICP = Indices::enableMICP };
+    enum { numBioInWat = Indices::numBioInWat };
     
     static constexpr unsigned waterPhaseIdx = FluidSystem::waterPhaseIdx;
 
@@ -613,6 +662,9 @@ protected:
         diffusivity_ = diffusivity / faceArea;
         update(effectiveDiffusionCoefficient_, intQuantsInside, intQuantsOutside);
         Valgrind::CheckDefined(diffusivity_);
+        if constexpr(enableBioeffects) {
+            updateBio(effectiveBioDiffCoefficient_, intQuantsInside, intQuantsOutside);
+        }
     }
 
 public:
@@ -622,14 +674,6 @@ public:
         // opm-models expects per area flux
         // use the arithmetic average for the effective
         // diffusion coefficients.
-        if constexpr(enableMICP) {
-            for (unsigned compIdx = 0; compIdx < numComponents; ++compIdx) {
-                effectiveDiffusionCoefficient[waterPhaseIdx][compIdx] = 0.5 *
-                    ( intQuantsInside.effectiveDiffusionCoefficient(waterPhaseIdx, compIdx) +
-                    intQuantsOutside.effectiveDiffusionCoefficient(waterPhaseIdx, compIdx) );
-            }
-            return;
-        }
 
         for (unsigned phaseIdx = 0; phaseIdx < numPhases; ++phaseIdx) {
             if (!FluidSystem::phaseIsActive(phaseIdx)) {
@@ -645,6 +689,17 @@ public:
                       intQuantsOutside.effectiveDiffusionCoefficient(phaseIdx, compIdx) );
                 Valgrind::CheckDefined(effectiveDiffusionCoefficient[phaseIdx][compIdx]);
             }
+        }
+    }
+    static void updateBio(std::array<Evaluation, numBioInWat>& effectiveBioDiffCoefficient,
+                          const IntensiveQuantities& intQuantsInside,
+                          const IntensiveQuantities& intQuantsOutside) {
+
+        for (unsigned compIdx = 0; compIdx < numBioInWat; ++compIdx) {
+            effectiveBioDiffCoefficient[compIdx] = 0.5 *
+                ( intQuantsInside.effectiveBioDiffCoefficient(compIdx) +
+                    intQuantsOutside.effectiveBioDiffCoefficient(compIdx) );
+            Valgrind::CheckDefined(effectiveBioDiffCoefficient[compIdx]);
         }
     }
 protected:
@@ -681,9 +736,17 @@ public:
         return effectiveDiffusionCoefficient_;
     }
 
+    const Evaluation& effectiveBioDiffCoefficient(unsigned compIdx) const
+    { return effectiveBioDiffCoefficient_[compIdx]; }
+
+    const auto& effectiveBioDiffCoefficient() const{
+        return effectiveBioDiffCoefficient_;
+    }
+
 private:
     Scalar diffusivity_;
     EvaluationArray effectiveDiffusionCoefficient_;
+    std::array<Evaluation, numBioInWat> effectiveBioDiffCoefficient_;
 };
 
 } // namespace Opm

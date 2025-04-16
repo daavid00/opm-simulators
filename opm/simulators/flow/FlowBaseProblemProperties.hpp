@@ -222,7 +222,7 @@ struct EnableExtbo<TypeTag, TTag::FlowBaseProblem>
 { static constexpr bool value = false; };
 
 template<class TypeTag>
-struct EnableMICP<TypeTag, TTag::FlowBaseProblem>
+struct EnableBioeffects<TypeTag, TTag::FlowBaseProblem>
 { static constexpr bool value = false; };
 
 // disable thermal flux boundaries by default
