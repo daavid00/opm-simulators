@@ -84,6 +84,10 @@ ComponentName<FluidSystem,Indices>::ComponentName()
         names_[Indices::biofilmConcentrationIdx] = "Biofilm";
         names_[Indices::calciteConcentrationIdx] = "Calcite";
     }
+
+    if constexpr (Indices::enableBiofilm) {
+        names_[Indices::biofilmConcentrationIdx] = "Biofilm";
+    }
 }
 
 template<class Scalar>
@@ -107,6 +111,7 @@ using FS = BlackOilFluidSystem<Scalar,BlackOilDefaultIndexTraits>;
     INSTANTIATE(T,BlackOilTwoPhaseIndices<0u,0u,0u,1u,false,false,0u,0u,0u>) \
     INSTANTIATE(T,BlackOilTwoPhaseIndices<0u,0u,0u,1u,false,true,0u,0u,0u>)  \
     INSTANTIATE(T,BlackOilTwoPhaseIndices<1u,0u,0u,0u,false,false,0u,0u,0u>) \
+    INSTANTIATE(T,BlackOilTwoPhaseIndices<0u,0u,0u,1u,false,false,0u,0u,1u>) \
     INSTANTIATE(T,BlackOilIndices<0u,0u,0u,0u,false,false,0u,0u>)            \
     INSTANTIATE(T,BlackOilIndices<0u,0u,0u,0u,true,false,0u,0u>)             \
     INSTANTIATE(T,BlackOilIndices<0u,0u,0u,0u,false,true,0u,0u>)             \

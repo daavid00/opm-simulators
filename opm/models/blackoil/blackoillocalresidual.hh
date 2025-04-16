@@ -36,7 +36,7 @@
 #include "blackoilfoammodules.hh"
 #include "blackoilbrinemodules.hh"
 #include "blackoildiffusionmodule.hh"
-#include "blackoilmicpmodules.hh"
+#include "blackoilbioeffectsmodules.hh"
 #include "blackoilconvectivemixingmodule.hh"
 #include <opm/material/fluidstates/BlackOilFluidState.hpp>
 
@@ -91,7 +91,7 @@ class BlackOilLocalResidual : public GetPropType<TypeTag, Properties::DiscLocalR
     using FoamModule = BlackOilFoamModule<TypeTag>;
     using BrineModule = BlackOilBrineModule<TypeTag>;
     using DiffusionModule = BlackOilDiffusionModule<TypeTag, enableDiffusion>;
-    using MICPModule = BlackOilMICPModule<TypeTag>;
+    using BioeffectsModule = BlackOilBioeffectsModule<TypeTag>;
     using ConvectiveMixingModule = BlackOilConvectiveMixingModule<TypeTag, enableConvectiveMixing>;
 
 public:
@@ -183,8 +183,8 @@ public:
         // deal with salt (if present)
         BrineModule::addStorage(storage, intQuants);
 
-        // deal with micp (if present)
-        MICPModule::addStorage(storage, intQuants);
+        // deal with bioeffects (if present)
+        BioeffectsModule::addStorage(storage, intQuants);
     }
 
     /*!
@@ -231,8 +231,8 @@ public:
         // deal with salt (if present)
         BrineModule::computeFlux(flux, elemCtx, scvfIdx, timeIdx);
 
-        // deal with micp (if present)
-        MICPModule::computeFlux(flux, elemCtx, scvfIdx, timeIdx);
+        // deal with bioeffects (if present)
+        BioeffectsModule::computeFlux(flux, elemCtx, scvfIdx, timeIdx);
 
         DiffusionModule::addDiffusiveFlux(flux, elemCtx, scvfIdx, timeIdx);
 
@@ -251,8 +251,8 @@ public:
         // retrieve the source term intrinsic to the problem
         elemCtx.problem().source(source, elemCtx, dofIdx, timeIdx);
 
-        // deal with MICP (if present)
-        MICPModule::addSource(source, elemCtx, dofIdx, timeIdx);
+        // deal with bioeffects (if present)
+        BioeffectsModule::addSource(source, elemCtx, dofIdx, timeIdx);
 
         // scale the source term of the energy equation
         if constexpr(enableEnergy)

@@ -33,7 +33,7 @@
 #include "blackoilpolymermodules.hh"
 #include "blackoilenergymodules.hh"
 #include "blackoildiffusionmodule.hh"
-#include "blackoilmicpmodules.hh"
+#include "blackoilbioeffectsmodules.hh"
 #include <opm/models/common/multiphasebaseextensivequantities.hh>
 
 namespace Opm {
@@ -56,7 +56,7 @@ class BlackOilExtensiveQuantities
     , public BlackOilPolymerExtensiveQuantities<TypeTag>
     , public BlackOilEnergyExtensiveQuantities<TypeTag>
     , public BlackOilDiffusionExtensiveQuantities<TypeTag, getPropValue<TypeTag, Properties::EnableDiffusion>()>
-    , public BlackOilMICPExtensiveQuantities<TypeTag>
+    , public BlackOilBioeffectsExtensiveQuantities<TypeTag>
 {
     using MultiPhaseParent = MultiPhaseBaseExtensiveQuantities<TypeTag>;
 

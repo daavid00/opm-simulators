@@ -30,9 +30,9 @@
 
 #include <opm/common/Exceptions.hpp>
 
-#include <opm/models/blackoil/blackoilproperties.hh>
-#include <opm/models/blackoil/blackoilmicpmodules.hh>
+#include <opm/models/blackoil/blackoilbioeffectsmodules.hh>
 #include <opm/models/blackoil/blackoilnewtonmethodparams.hpp>
+#include <opm/models/blackoil/blackoilproperties.hh>
 
 #include <opm/models/nonlinear/newtonmethod.hh>
 
@@ -65,7 +65,7 @@ class BlackOilNewtonMethod : public GetPropType<TypeTag, Properties::DiscNewtonM
     using FluidSystem = GetPropType<TypeTag, Properties::FluidSystem>;
     using Scalar = GetPropType<TypeTag, Properties::Scalar>;
     using Linearizer = GetPropType<TypeTag, Properties::Linearizer>;
-    using MICPModule = BlackOilMICPModule<TypeTag>;
+    using BioeffectsModule = BlackOilBioeffectsModule<TypeTag>;
 
     static const unsigned numEq = getPropValue<TypeTag, Properties::NumEq>();
     static constexpr bool enableSaltPrecipitation = getPropValue<TypeTag, Properties::EnableSaltPrecipitation>();
@@ -204,7 +204,8 @@ protected:
         static constexpr bool enableEnergy = Indices::temperatureIdx >= 0;
         static constexpr bool enableFoam = Indices::foamConcentrationIdx >= 0;
         static constexpr bool enableBrine = Indices::saltConcentrationIdx >= 0;
-        static constexpr bool enableMICP = Indices::microbialConcentrationIdx >= 0;
+        static constexpr bool enableBioeffects = Indices::biofilmConcentrationIdx >= 0;
+        static constexpr bool enableMICP = Indices::enableMICP;
 
         currentValue.checkDefined();
         Valgrind::CheckDefined(update);
@@ -377,23 +378,25 @@ protected:
             // minus 1e-8. This prevents singularities (e.g., one of the calcite source term is 
             // evaluated at 1/(iniPoro - calcite)). The value 1e-8 is taken from the salt precipitation
             // clapping above. 
-            if constexpr (enableMICP) {
-                if (pvIdx == Indices::microbialConcentrationIdx) {
-                    nextValue[pvIdx] = std::max(nextValue[pvIdx], Scalar{0.0});
-                }
-                if (pvIdx == Indices::oxygenConcentrationIdx) {
-                    nextValue[pvIdx] = std::max(nextValue[pvIdx], Scalar{0.0});
-                }
-                if (pvIdx == Indices::ureaConcentrationIdx) {
-                    nextValue[pvIdx] = std::max(nextValue[pvIdx], Scalar{0.0});
-                }
+            if constexpr (enableBioeffects) {
                 if (pvIdx == Indices::biofilmConcentrationIdx) {
                     nextValue[pvIdx] = std::clamp(nextValue[pvIdx], Scalar{0.0},
                                                                     this->problem().referencePorosity(globalDofIdx, 0) - 1e-8);
                 }
-                if (pvIdx == Indices::calciteConcentrationIdx) {
-                    nextValue[pvIdx] = std::clamp(nextValue[pvIdx], Scalar{0.0},
-                                                                    this->problem().referencePorosity(globalDofIdx, 0) - 1e-8);
+                if constexpr (enableMICP) {
+                    if (pvIdx == Indices::microbialConcentrationIdx) {
+                        nextValue[pvIdx] = std::max(nextValue[pvIdx], Scalar{0.0});
+                    }
+                    if (pvIdx == Indices::oxygenConcentrationIdx) {
+                        nextValue[pvIdx] = std::max(nextValue[pvIdx], Scalar{0.0});
+                    }
+                    if (pvIdx == Indices::ureaConcentrationIdx) {
+                        nextValue[pvIdx] = std::max(nextValue[pvIdx], Scalar{0.0});
+                    }
+                    if (pvIdx == Indices::calciteConcentrationIdx) {
+                        nextValue[pvIdx] = std::clamp(nextValue[pvIdx], Scalar{0.0},
+                                                                        this->problem().referencePorosity(globalDofIdx, 0) - 1e-8);
+                    }
                 }
             }
         }

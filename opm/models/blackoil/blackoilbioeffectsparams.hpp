@@ -23,10 +23,10 @@
 /*!
  * \file
  *
- * \brief Contains the parameters required to extend the black-oil model by MICP.
+ * \brief Contains the parameters required to extend the black-oil model by bioeffects.
  */
-#ifndef OPM_BLACK_OIL_MICP_PARAMS_HPP
-#define OPM_BLACK_OIL_MICP_PARAMS_HPP
+#ifndef OPM_BLACK_OIL_BIOEFFECTS_PARAMS_HPP
+#define OPM_BLACK_OIL_BIOEFFECTS_PARAMS_HPP
 
 #include <opm/material/common/Tabulated1DFunction.hpp>
 
@@ -38,24 +38,26 @@ namespace Opm {
 class EclipseState;
 #endif
 
-//! \brief Struct holding the parameters for the BlackOilMICPModule class.
+//! \brief Struct holding the parameters for the BlackOilBioeffectsModule class.
 template<class Scalar>
-struct BlackOilMICPParams
+struct BlackOilBioeffectsParams
 {
 #if HAVE_ECL_INPUT
-    template<bool enableMICP>
+    template<bool enableBioeffects , bool enableMICP>
     void initFromState(const EclipseState& eclState);
 #endif
 
     using TabulatedFunction = Tabulated1DFunction<Scalar>;
 
     std::vector<TabulatedFunction> permfactTable_;
+    std::vector<TabulatedFunction> pcfactTable_;
+    std::vector<TabulatedFunction> biofmobtTable_;
 
     std::vector<Scalar> densityBiofilm_;
     std::vector<Scalar> densityCalcite_;
     std::vector<Scalar> detachmentRate_;
     std::vector<Scalar> detachmentExponent_;
-    std::vector<Scalar> halfVelocityOxygen_;
+    std::vector<Scalar> halfVelocityGrowth_;
     std::vector<Scalar> halfVelocityUrea_;
     std::vector<Scalar> maximumGrowthRate_;
     std::vector<Scalar> maximumUreaUtilization_;
@@ -71,4 +73,4 @@ struct BlackOilMICPParams
 
 } // namespace Opm
 
-#endif // OPM_BLACK_OIL_MICP_PARAMS_HPP
+#endif // OPM_BLACK_OIL_BIOEFFECTS_PARAMS_HPP

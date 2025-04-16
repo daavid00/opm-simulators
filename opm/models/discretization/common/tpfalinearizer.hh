@@ -91,6 +91,7 @@ class TpfaLinearizer
     using Stencil = GetPropType<TypeTag, Properties::Stencil>;
     using LocalResidual = GetPropType<TypeTag, Properties::LocalResidual>;
     using IntensiveQuantities = GetPropType<TypeTag, Properties::IntensiveQuantities>;
+    using Indices = GetPropType<TypeTag, Properties::Indices>;
 
     using Element = typename GridView::template Codim<0>::Entity;
     using ElementIterator = typename GridView::template Codim<0>::Iterator;
@@ -108,7 +109,7 @@ class TpfaLinearizer
     static const bool linearizeNonLocalElements = getPropValue<TypeTag, Properties::LinearizeNonLocalElements>();
     static const bool enableEnergy = getPropValue<TypeTag, Properties::EnableEnergy>();
     static const bool enableDiffusion = getPropValue<TypeTag, Properties::EnableDiffusion>();
-    static const bool enableMICP = getPropValue<TypeTag, Properties::EnableMICP>();
+    static const bool enableMICP = Indices::enableMICP;
 
     // copying the linearizer is not a good idea
     TpfaLinearizer(const TpfaLinearizer&) = delete;
