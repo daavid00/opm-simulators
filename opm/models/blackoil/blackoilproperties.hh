@@ -67,10 +67,9 @@ struct EnableVapwat { using type = UndefinedProperty; };
 //! Enable the ECL-blackoil extension for disolution of gas into water
 template<class TypeTag, class MyTypeTag>
 struct EnableDisgasInWater { using type = UndefinedProperty; };
-//! Enable the ECL-blackoil extension for MICP.
+//! Enable the ECL-blackoil extension for bioeffects (biofilm/MICP)
 template<class TypeTag, class MyTypeTag>
-struct EnableMICP { using type = UndefinedProperty; };
-
+struct EnableBioeffects { using type = UndefinedProperty; };
 
 //! Allow the spatial and temporal domains to exhibit non-constant temperature
 //! in the black-oil model

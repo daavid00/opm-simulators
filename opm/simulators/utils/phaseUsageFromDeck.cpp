@@ -140,6 +140,9 @@ PhaseUsage phaseUsageFromDeck(const EclipseState& eclipseState)
     if (eclipseState.runspec().co2Storage() || eclipseState.runspec().h2Storage()) {
         PhaseUsage pu = phaseUsage(phases);
         pu.has_co2_or_h2store = true;
+        if (eclipseState.runspec().biof()) {
+            pu.has_bioeffects = true;
+        }
         return pu;
     }
     else if (eclipseState.runspec().micp()) {

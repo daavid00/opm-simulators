@@ -32,11 +32,11 @@
 #include <opm/material/fluidstates/CompositionalFluidState.hpp>
 #include <opm/material/fluidstates/SimpleModularFluidState.hpp>
 
+#include <opm/models/blackoil/blackoilbioeffectsmodules.hh>
 #include <opm/models/blackoil/blackoilbrinemodules.hh>
 #include <opm/models/blackoil/blackoilenergymodules.hh>
 #include <opm/models/blackoil/blackoilextbomodules.hh>
 #include <opm/models/blackoil/blackoilfoammodules.hh>
-#include <opm/models/blackoil/blackoilmicpmodules.hh>
 #include <opm/models/blackoil/blackoilpolymermodules.hh>
 #include <opm/models/blackoil/blackoilproperties.hh>
 #include <opm/models/blackoil/blackoilsolventmodules.hh>
@@ -105,7 +105,8 @@ class BlackOilPrimaryVariables : public FvBasePrimaryVariables<TypeTag>
     enum { enableVapwat = getPropValue<TypeTag, Properties::EnableVapwat>() };
     enum { enableEnergy = getPropValue<TypeTag, Properties::EnableEnergy>() };
     enum { enableTemperature = getPropValue<TypeTag, Properties::EnableTemperature>() };
-    enum { enableMICP = getPropValue<TypeTag, Properties::EnableMICP>() };
+    enum { enableBioeffects = getPropValue<TypeTag, Properties::EnableBioeffects>() };
+    enum { enableMICP = Indices::enableMICP };
     enum { gasCompIdx = FluidSystem::gasCompIdx };
     enum { waterCompIdx = FluidSystem::waterCompIdx };
     enum { oilCompIdx = FluidSystem::oilCompIdx };
@@ -118,7 +119,7 @@ class BlackOilPrimaryVariables : public FvBasePrimaryVariables<TypeTag>
     using EnergyModule = BlackOilEnergyModule<TypeTag, enableEnergy>;
     using FoamModule = BlackOilFoamModule<TypeTag, enableFoam>;
     using BrineModule = BlackOilBrineModule<TypeTag, enableBrine>;
-    using MICPModule = BlackOilMICPModule<TypeTag, enableMICP>;
+    using BioeffectsModule = BlackOilBioeffectsModule<TypeTag, enableBioeffects>;
 
     static_assert(numPhases == 3, "The black-oil model assumes three phases!");
     static_assert(numComponents == 3, "The black-oil model assumes three components!");
@@ -641,15 +642,25 @@ public:
             return changed;
         }
 
-        if (BrineModule::hasPcfactTables() && primaryVarsMeaningBrine() == BrineMeaning::Sp) {
-            unsigned satnumRegionIdx = problem.satnumRegionIndex(globalDofIdx);
-            Scalar Sp = saltConcentration_();
-            Scalar porosityFactor  = min(1.0 - Sp, 1.0); //phi/phi_0
-            const auto& pcfactTable = BrineModule::pcfactTable(satnumRegionIdx);
-            pcFactor_ = pcfactTable.eval(porosityFactor, /*extrapolation=*/true);
+        pcFactor_ = 1.0;
+        if constexpr (enableBrine) {
+            if (BrineModule::hasPcfactTables() && primaryVarsMeaningBrine() == BrineMeaning::Sp) {
+                unsigned satnumRegionIdx = problem.satnumRegionIndex(globalDofIdx);
+                Scalar Sp = saltConcentration_();
+                Scalar porosityFactor  = min(1.0 - Sp, 1.0); //phi/phi_0
+                const auto& pcfactTable = BrineModule::pcfactTable(satnumRegionIdx);
+                pcFactor_ = pcfactTable.eval(porosityFactor, /*extrapolation=*/true);
+            }
         }
-        else {
-            pcFactor_ = 1.0;
+        else if constexpr (enableBioeffects) {
+            if (BioeffectsModule::hasPcfactTables() && problem.referencePorosity(globalDofIdx, 0) > 0) {
+                unsigned satnumRegionIdx = problem.satnumRegionIndex(globalDofIdx);
+                Scalar Sb = biofilmConcentration_() / 
+                            problem.referencePorosity(globalDofIdx, 0);
+                Scalar porosityFactor  = min(1.0 - Sb, 1.0); //phi/phi_0
+                const auto& pcfactTable = BioeffectsModule::pcfactTable(satnumRegionIdx);
+                pcFactor_ = pcfactTable.eval(porosityFactor, /*extrapolation=*/true);
+            }
         }
 
         switch(primaryVarsMeaningWater()) {
@@ -1045,7 +1056,7 @@ private:
 
     Scalar microbialConcentration_() const
     {
-        if constexpr (enableMICP)
+        if constexpr (enableBioeffects)
             return (*this)[Indices::microbialConcentrationIdx];
         else
             return 0.0;
@@ -1069,7 +1080,7 @@ private:
 
     Scalar biofilmConcentration_() const
     {
-        if constexpr (enableMICP)
+        if constexpr (enableBioeffects)
             return (*this)[Indices::biofilmConcentrationIdx];
         else
             return 0.0;
