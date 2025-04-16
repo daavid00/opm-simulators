@@ -28,7 +28,7 @@
 #ifndef OPM_BLACKOIL_DIFFUSION_MODULE_HH
 #define OPM_BLACKOIL_DIFFUSION_MODULE_HH
 
-#include <opm/models/blackoil/blackoilmicpmodules.hh>
+#include <opm/models/blackoil/blackoilbioeffectsmodules.hh>
 #include <opm/models/discretization/common/fvbaseproperties.hh>
 
 #include <opm/material/common/Valgrind.hpp>
@@ -106,8 +106,7 @@ class BlackOilDiffusionModule<TypeTag, /*enableDiffusion=*/true>
     enum { numPhases = FluidSystem::numPhases };
     enum { numComponents = FluidSystem::numComponents };
     enum { conti0EqIdx = Indices::conti0EqIdx };
-
-    enum { enableMICP = getPropValue<TypeTag, Properties::EnableMICP>() };
+    enum { enableMICP = Indices::enableMICP };
 
     static constexpr unsigned contiMicrobialEqIdx = Indices::contiMicrobialEqIdx;
     static constexpr unsigned contiOxygenEqIdx = Indices::contiOxygenEqIdx;
@@ -374,11 +373,12 @@ class BlackOilDiffusionIntensiveQuantities<TypeTag, /*enableDiffusion=*/true>
     using ElementContext = GetPropType<TypeTag, Properties::ElementContext>;
     using FluidSystem = GetPropType<TypeTag, Properties::FluidSystem>;
     using IntensiveQuantities = GetPropType<TypeTag, Properties::IntensiveQuantities>;
-    using MICPModule = BlackOilMICPModule<TypeTag>;
+    using Indices = GetPropType<TypeTag, Properties::Indices>;
+    using BioeffectsModule = BlackOilBioeffectsModule<TypeTag>;
 
     enum { numPhases = FluidSystem::numPhases };
     enum { numComponents = FluidSystem::numComponents };
-    enum { enableMICP = getPropValue<TypeTag, Properties::EnableMICP>() };
+    enum { enableMICP = Indices::enableMICP };
 
     static constexpr unsigned waterPhaseIdx = FluidSystem::waterPhaseIdx;
 
@@ -460,9 +460,9 @@ protected:
 
         if constexpr(enableMICP) {
             unsigned pvtRegionIndex = intQuants.fluidState().pvtRegionIndex();
-            diffusionCoefficient_[waterPhaseIdx][0] = MICPModule::microbialDiffusion(pvtRegionIndex);
-            diffusionCoefficient_[waterPhaseIdx][1] = MICPModule::oxygenDiffusion(pvtRegionIndex);
-            diffusionCoefficient_[waterPhaseIdx][2] = MICPModule::ureaDiffusion(pvtRegionIndex);
+            diffusionCoefficient_[waterPhaseIdx][0] = BioeffectsModule::microbialDiffusion(pvtRegionIndex);
+            diffusionCoefficient_[waterPhaseIdx][1] = BioeffectsModule::oxygenDiffusion(pvtRegionIndex);
+            diffusionCoefficient_[waterPhaseIdx][2] = BioeffectsModule::ureaDiffusion(pvtRegionIndex);
             return;
         }
 
@@ -579,11 +579,12 @@ class BlackOilDiffusionExtensiveQuantities<TypeTag, /*enableDiffusion=*/true>
     using FluidSystem = GetPropType<TypeTag, Properties::FluidSystem>;
     using Toolbox = MathToolbox<Evaluation>;
     using IntensiveQuantities = GetPropType<TypeTag, Properties::IntensiveQuantities>;
+    using Indices = GetPropType<TypeTag, Properties::Indices>;
 
     enum { dimWorld = GridView::dimensionworld };
     enum { numPhases = getPropValue<TypeTag, Properties::NumPhases>() };
     enum { numComponents = getPropValue<TypeTag, Properties::NumComponents>() };
-    enum { enableMICP = getPropValue<TypeTag, Properties::EnableMICP>() };
+    enum { enableMICP = Indices::enableMICP };
     
     static constexpr unsigned waterPhaseIdx = FluidSystem::waterPhaseIdx;
 

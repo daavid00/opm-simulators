@@ -37,7 +37,7 @@
 #include "blackoilenergymodules.hh"
 #include "blackoildiffusionmodule.hh"
 #include "blackoildispersionmodule.hh"
-#include "blackoilmicpmodules.hh"
+#include "blackoilbioeffectsmodules.hh"
 #include "blackoilconvectivemixingmodule.hh"
 
 #include <opm/common/TimingMacros.hpp>
@@ -77,7 +77,7 @@ class BlackOilIntensiveQuantities
     , public BlackOilFoamIntensiveQuantities<TypeTag>
     , public BlackOilBrineIntensiveQuantities<TypeTag>
     , public BlackOilEnergyIntensiveQuantities<TypeTag>
-    , public BlackOilMICPIntensiveQuantities<TypeTag>
+    , public BlackOilBioeffectsIntensiveQuantities<TypeTag>
     , public BlackOilConvectiveMixingIntensiveQuantities<TypeTag>
 {
     using ParentType = GetPropType<TypeTag, Properties::DiscIntensiveQuantities>;
@@ -107,7 +107,8 @@ class BlackOilIntensiveQuantities
     enum { enableDiffusion = getPropValue<TypeTag, Properties::EnableDiffusion>() };
     enum { enableDispersion = getPropValue<TypeTag, Properties::EnableDispersion>() };
     enum { enableConvectiveMixing = getPropValue<TypeTag, Properties::EnableConvectiveMixing>() };
-    enum { enableMICP = getPropValue<TypeTag, Properties::EnableMICP>() };
+    enum { enableBioeffects = getPropValue<TypeTag, Properties::EnableBioeffects>() };
+    enum { enableMICP = Indices::enableMICP };
     enum { numPhases = getPropValue<TypeTag, Properties::NumPhases>() };
     enum { numComponents = getPropValue<TypeTag, Properties::NumComponents>() };
     enum { waterCompIdx = FluidSystem::waterCompIdx };
@@ -133,7 +134,8 @@ class BlackOilIntensiveQuantities
     using DirectionalMobilityPtr = Opm::Utility::CopyablePtr<DirectionalMobility<TypeTag, Evaluation>>;
     using BrineModule = BlackOilBrineModule<TypeTag>;
     using BrineIntQua = BlackOilBrineIntensiveQuantities<TypeTag, enableSaltPrecipitation>;
-    using MICPIntQua = BlackOilMICPIntensiveQuantities<TypeTag, enableMICP>;
+    using BioeffectsModule = BlackOilBioeffectsModule<TypeTag>;
+    using BioeffectsIntQua = BlackOilBioeffectsIntensiveQuantities<TypeTag, enableBioeffects>;
 
 
 public:
@@ -272,13 +274,26 @@ public:
         const auto& materialParams = problem.materialLawParams(globalSpaceIdx);
         MaterialLaw::capillaryPressures(pC, materialParams, fluidState_);
 
-        // scaling the capillary pressure due to salt precipitation
+        // scaling the capillary pressure due to porosity changes
         if constexpr (enableBrine) {
             if (BrineModule::hasPcfactTables() && priVars.primaryVarsMeaningBrine() == PrimaryVariables::BrineMeaning::Sp) {
                 unsigned satnumRegionIdx = elemCtx.problem().satnumRegionIndex(elemCtx, dofIdx, timeIdx);
                 const Evaluation Sp = priVars.makeEvaluation(Indices::saltConcentrationIdx, timeIdx);
                 const Evaluation porosityFactor  = min(1.0 - Sp, 1.0); //phi/phi_0
                 const auto& pcfactTable = BrineModule::pcfactTable(satnumRegionIdx);
+                const Evaluation pcFactor = pcfactTable.eval(porosityFactor, /*extrapolation=*/true);
+                for (unsigned phaseIdx = 0; phaseIdx < numPhases; ++phaseIdx)
+                    if (FluidSystem::phaseIsActive(phaseIdx)) {
+                        pC[phaseIdx] *= pcFactor;
+                    }
+            }
+        }
+        else if constexpr (enableBioeffects) {
+            if (BioeffectsModule::hasPcfactTables() && referencePorosity_ > 0) {
+                unsigned satnumRegionIdx = elemCtx.problem().satnumRegionIndex(elemCtx, dofIdx, timeIdx);
+                const Evaluation Sb = priVars.makeEvaluation(Indices::biofilmConcentrationIdx, timeIdx);
+                const Evaluation porosityFactor  = min(1.0 - Sb/referencePorosity_, 1.0); //phi/phi_0
+                const auto& pcfactTable = BioeffectsModule::pcfactTable(satnumRegionIdx);
                 const Evaluation pcFactor = pcfactTable.eval(porosityFactor, /*extrapolation=*/true);
                 for (unsigned phaseIdx = 0; phaseIdx < numPhases; ++phaseIdx)
                     if (FluidSystem::phaseIsActive(phaseIdx)) {
@@ -511,11 +526,13 @@ public:
         // deal with water induced rock compaction
         porosity_ *= problem.template rockCompPoroMultiplier<Evaluation>(*this, globalSpaceIdx);
 
-        // deal with MICP
-        if constexpr (enableMICP){
+        // deal with bioeffects (minimum porosity of 1e-8 to prevent numerical issues)
+        if constexpr (enableBioeffects) {
             Evaluation biofilm_ = priVars.makeEvaluation(Indices::biofilmConcentrationIdx, timeIdx, linearizationType);
-            Evaluation calcite_ = priVars.makeEvaluation(Indices::calciteConcentrationIdx, timeIdx, linearizationType);
-            // minimum porosity of 1e-8 to prevent numerical issues 
+            Evaluation calcite_ = 0.0;
+            if constexpr (enableMICP) {
+                calcite_ = priVars.makeEvaluation(Indices::calciteConcentrationIdx, timeIdx, linearizationType); 
+            }
             porosity_ -= min(biofilm_ + calcite_, referencePorosity_ - 1e-8);
         }
 
@@ -599,8 +616,8 @@ public:
         if constexpr (enableFoam) {
             asImp_().foamPropertiesUpdate_(elemCtx, dofIdx, timeIdx);
         }
-        if constexpr (enableMICP) {
-            asImp_().MICPPropertiesUpdate_(elemCtx, dofIdx, timeIdx);
+        if constexpr (enableBioeffects) {
+            asImp_().bioeffectsPropertiesUpdate_(elemCtx, dofIdx, timeIdx);
         }
         if constexpr (enableBrine) {
             asImp_().saltPropertiesUpdate_(elemCtx, dofIdx, timeIdx);
@@ -709,14 +726,14 @@ public:
 
     const Evaluation& permFactor() const
     {
-        if constexpr (enableMICP) {
-            return MICPIntQua::permFactor();
+        if constexpr (enableBioeffects) {
+            return BioeffectsIntQua::permFactor();
         }
         else if constexpr (enableSaltPrecipitation) {
             return BrineIntQua::permFactor();
         }
         else {
-            throw std::logic_error("permFactor() called but salt precipitation or MICP are disabled");
+            throw std::logic_error("permFactor() called but salt precipitation or bioeffects are disabled");
         }
     }
 
@@ -727,7 +744,7 @@ private:
     friend BlackOilEnergyIntensiveQuantities<TypeTag>;
     friend BlackOilFoamIntensiveQuantities<TypeTag>;
     friend BlackOilBrineIntensiveQuantities<TypeTag>;
-    friend BlackOilMICPIntensiveQuantities<TypeTag>;
+    friend BlackOilBioeffectsIntensiveQuantities<TypeTag>;
 
     Implementation& asImp_()
     { return *static_cast<Implementation*>(this); }

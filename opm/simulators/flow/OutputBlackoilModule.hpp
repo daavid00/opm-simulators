@@ -114,7 +114,8 @@ class OutputBlackOilModule : public GenericOutputBlackoilModule<GetPropType<Type
     static constexpr int oilCompIdx = FluidSystem::oilCompIdx;
     static constexpr int waterCompIdx = FluidSystem::waterCompIdx;
     enum { enableEnergy = getPropValue<TypeTag, Properties::EnableEnergy>() };
-    enum { enableMICP = getPropValue<TypeTag, Properties::EnableMICP>() };
+    enum { enableBioeffects = getPropValue<TypeTag, Properties::EnableBioeffects>() };
+    enum { enableMICP = Indices::enableMICP };
 
     template<int idx, class VectorType>
     static Scalar value_or_zero(const VectorType& v)
@@ -147,7 +148,7 @@ public:
                    getPropValue<TypeTag, Properties::EnableBrine>(),
                    getPropValue<TypeTag, Properties::EnableSaltPrecipitation>(),
                    getPropValue<TypeTag, Properties::EnableExtbo>(),
-                   getPropValue<TypeTag, Properties::EnableMICP>())
+                   getPropValue<TypeTag, Properties::EnableBioeffects>())
         , simulator_(simulator)
         , collectOnIORank_(collectOnIORank)
     {
@@ -875,22 +876,24 @@ private:
             this->updateCO2InWater(globalDofIdx, pv, fs);
         }
 
-        if constexpr(enableMICP) {
-            const auto surfVolWat = pv * getValue(fs.invB(waterPhaseIdx));
-            if (this->fipC_.hasMicrobialMass()) {
-                this->updateMicrobialMass(globalDofIdx, intQuants, surfVolWat);
-            }
-            if (this->fipC_.hasOxygenMass()) {
-                this->updateOxygenMass(globalDofIdx, intQuants, surfVolWat);
-            }
-            if (this->fipC_.hasUreaMass()) {
-                this->updateUreaMass(globalDofIdx, intQuants, surfVolWat);
-            }
+        if constexpr(enableBioeffects) {
             if (this->fipC_.hasBiofilmMass()) {
                 this->updateBiofilmMass(globalDofIdx, intQuants, totVolume);
             }
-            if (this->fipC_.hasCalciteMass()) {
-                this->updateCalciteMass(globalDofIdx, intQuants, totVolume);
+            if constexpr(enableMICP) {
+                const auto surfVolWat = pv * getValue(fs.invB(waterPhaseIdx));
+                if (this->fipC_.hasMicrobialMass()) {
+                    this->updateMicrobialMass(globalDofIdx, intQuants, surfVolWat);
+                }
+                if (this->fipC_.hasOxygenMass()) {
+                    this->updateOxygenMass(globalDofIdx, intQuants, surfVolWat);
+                }
+                if (this->fipC_.hasUreaMass()) {
+                    this->updateUreaMass(globalDofIdx, intQuants, surfVolWat);
+                }
+                if (this->fipC_.hasCalciteMass()) {
+                    this->updateCalciteMass(globalDofIdx, intQuants, totVolume);
+                }
             }
         }
     }
@@ -1506,15 +1509,18 @@ private:
                                                  stdVolCo2 * rhoCO2 / stdMassTotal);
                     }, this->extboC_.allocated()
             },
-            Entry{[&micpC = this->micpC_](const Context& ectx)
+            Entry{[&bioeffectsC = this->bioeffectsC_](const Context& ectx)
                   {
-                      micpC.assign(ectx.globalDofIdx,
-                                   ectx.intQuants.microbialConcentration().value(),
-                                   ectx.intQuants.oxygenConcentration().value(),
-                                   ectx.intQuants.ureaConcentration().value(),
-                                   ectx.intQuants.biofilmConcentration().value(),
-                                   ectx.intQuants.calciteConcentration().value());
-                  }, this->micpC_.allocated()
+                      bioeffectsC.assign(ectx.globalDofIdx,
+                                         ectx.intQuants.biofilmConcentration().value());
+                      if (Indices::enableMICP) {
+                          bioeffectsC.assign(ectx.globalDofIdx,
+                                             ectx.intQuants.microbialConcentration().value(),
+                                             ectx.intQuants.oxygenConcentration().value(),
+                                             ectx.intQuants.ureaConcentration().value(),
+                                             ectx.intQuants.calciteConcentration().value());
+                      }
+                  }, this->bioeffectsC_.allocated()
             },
             Entry{[&rftC = this->rftC_,
                    &vanguard = this->simulator_.vanguard()](const Context& ectx)

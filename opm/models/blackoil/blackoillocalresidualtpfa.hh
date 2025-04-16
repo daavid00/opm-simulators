@@ -38,7 +38,7 @@
 #include "blackoildiffusionmodule.hh"
 #include "blackoilconvectivemixingmodule.hh"
 #include "blackoildispersionmodule.hh"
-#include "blackoilmicpmodules.hh"
+#include "blackoilbioeffectsmodules.hh"
 #include <opm/material/fluidstates/BlackOilFluidState.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/FaceDir.hpp>
 #include <opm/input/eclipse/Schedule/BCProp.hpp>
@@ -96,7 +96,8 @@ class BlackOilLocalResidualTPFA : public GetPropType<TypeTag, Properties::DiscLo
     static constexpr bool enableDiffusion = getPropValue<TypeTag, Properties::EnableDiffusion>();
     static constexpr bool enableDispersion = getPropValue<TypeTag, Properties::EnableDispersion>();
     static constexpr bool enableConvectiveMixing = getPropValue<TypeTag, Properties::EnableConvectiveMixing>();
-    static constexpr bool enableMICP = getPropValue<TypeTag, Properties::EnableMICP>();
+    static constexpr bool enableBioeffects = getPropValue<TypeTag, Properties::EnableBioeffects>();
+    static constexpr bool enableMICP = Indices::enableMICP;
 
     using SolventModule = BlackOilSolventModule<TypeTag>;
     using ExtboModule = BlackOilExtboModule<TypeTag>;
@@ -109,7 +110,7 @@ class BlackOilLocalResidualTPFA : public GetPropType<TypeTag, Properties::DiscLo
     using ConvectiveMixingModuleParam = typename ConvectiveMixingModule::ConvectiveMixingModuleParam;
 
     using DispersionModule = BlackOilDispersionModule<TypeTag, enableDispersion>;
-    using MICPModule = BlackOilMICPModule<TypeTag>;
+    using BioeffectsModule = BlackOilBioeffectsModule<TypeTag>;
 
     using Toolbox = MathToolbox<Evaluation>;
 
@@ -222,8 +223,8 @@ public:
         // deal with salt (if present)
         BrineModule::addStorage(storage, intQuants);
 
-        // deal with micp (if present)
-        MICPModule::addStorage(storage, intQuants);
+        // deal with bioeffects (if present)
+        BioeffectsModule::addStorage(storage, intQuants);
     }
 
     /*!
@@ -373,7 +374,7 @@ public:
             unsigned globalUpIndex = (upIdx == interiorDofIdx) ? globalIndexIn : globalIndexEx;
             // Use arithmetic average (more accurate with harmonic, but that requires recomputing the transmissbility)
             Evaluation transMult = (intQuantsIn.rockCompTransMultiplier() + Toolbox::value(intQuantsEx.rockCompTransMultiplier()))/2;
-            if constexpr (enableMICP) {
+            if constexpr (enableBioeffects) {
                 transMult *= (intQuantsIn.permFactor() + Toolbox::value(intQuantsEx.permFactor()))/2;
             }
             Evaluation darcyFlux;
@@ -399,9 +400,18 @@ public:
                     EnergyModule::template addPhaseEnthalpyFluxes_<Evaluation, Evaluation, FluidState>(
                         flux, phaseIdx, darcyFlux, up.fluidState());
                 }
-                if constexpr (enableMICP) {
-                    MICPModule::template addMICPFluxes_<Evaluation, Evaluation, IntensiveQuantities>(
-                        flux, darcyFlux, intQuantsIn);
+                if constexpr (enableBioeffects) {
+                    if constexpr (enableMICP) {
+                        BioeffectsModule::template addBioeffectsFluxes_<Evaluation, Evaluation, IntensiveQuantities>(
+                            flux, darcyFlux, intQuantsIn);
+                    }
+                    else {
+                        if (phaseIdx == waterPhaseIdx) {
+                            pressureDifference *= (-trans / faceArea);
+                            BioeffectsModule::template addBioeffectsFluxes_<Evaluation, Evaluation, IntensiveQuantities>(
+                                flux, pressureDifference, intQuantsIn);
+                        }
+                    }
                 }
             } else {
                 const auto& invB = getInvB_<FluidSystem, FluidState, Scalar>(up.fluidState(), phaseIdx, pvtRegionIdx);
@@ -411,15 +421,24 @@ public:
                 if constexpr (enableEnergy) {
                     EnergyModule::template
                         addPhaseEnthalpyFluxes_<Scalar, Evaluation, FluidState>
-                        (flux,phaseIdx,darcyFlux, up.fluidState());
+                        (flux, phaseIdx, darcyFlux, up.fluidState());
                 }
-                if constexpr (enableMICP) {
-                    MICPModule::template
-                        addMICPFluxes_<Scalar, Evaluation, IntensiveQuantities>
-                        (flux, darcyFlux, intQuantsEx);
+                if constexpr (enableBioeffects) {
+                    if constexpr (enableMICP) {
+                        BioeffectsModule::template
+                            addBioeffectsFluxes_<Scalar, Evaluation, IntensiveQuantities>
+                            (flux, darcyFlux, intQuantsEx);
+                    }
+                    else {
+                        if (phaseIdx == waterPhaseIdx) {
+                            pressureDifference *= (-trans / faceArea);
+                            BioeffectsModule::template
+                                addBioeffectsFluxes_<Scalar, Evaluation, IntensiveQuantities>
+                                (flux, pressureDifference, intQuantsEx);
+                        }
+                    }
                 }
             }
-
         }
 
         // deal with solvents (if present)
@@ -506,12 +525,11 @@ public:
                                                 intQuantsEx,
                                                 tmpdispersivity,
                                                 normVelocityAvg);
-
         }
         
         // apply the scaling for the urea equation in MICP
         if constexpr (enableMICP) {
-            MICPModule::applyScaling(flux);
+            BioeffectsModule::applyScaling(flux);
         }
     }
 
@@ -696,8 +714,8 @@ public:
         // retrieve the source term intrinsic to the problem
         problem.source(source, globalSpaceIdex, timeIdx);
 
-        // deal with MICP (if present)
-        MICPModule::addSource(source, problem, insideIntQuants, globalSpaceIdex);
+        // deal with bioeffects (if present)
+        BioeffectsModule::addSource(source, problem, insideIntQuants, globalSpaceIdex);
 
         // scale the source term of the energy equation
         if constexpr(enableEnergy)
@@ -713,8 +731,8 @@ public:
         source = 0.0;
         problem.addToSourceDense(source, globalSpaceIdex, timeIdx);
 
-        // deal with MICP (if present)
-        MICPModule::addSource(source, problem, insideIntQuants, globalSpaceIdex);
+        // deal with bioeffects (if present)
+        BioeffectsModule::addSource(source, problem, insideIntQuants, globalSpaceIdex);
 
         // scale the source term of the energy equation
         if constexpr(enableEnergy)
@@ -733,8 +751,8 @@ public:
         // retrieve the source term intrinsic to the problem
         elemCtx.problem().source(source, elemCtx, dofIdx, timeIdx);
 
-        // deal with MICP (if present)
-        MICPModule::addSource(source, elemCtx, dofIdx, timeIdx);
+        // deal with bioeffects (if present)
+        BioeffectsModule::addSource(source, elemCtx, dofIdx, timeIdx);
 
         // scale the source term of the energy equation
         if constexpr(enableEnergy)
