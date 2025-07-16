@@ -60,6 +60,11 @@ public:
     template<class ResidualVector>
     void update(const ResidualVector& resid);
 
+    //! \brief Adds the CONV_NEW output.
+    //void updateConvNew(const unsigned cell_idx);
+    template<class ResidualVector>
+    void updateConvNew(const ResidualVector& lIdx);
+
     //! \brief Obtain a const-ref to the accumulated data.
     const std::vector<std::vector<int>>& getData() const
     { return cnv_X_; }
@@ -73,12 +78,15 @@ private:
     template<class ResidualVector>
     void gatherAndAccumulate(const std::vector<int>& lIdx,
                              const ResidualVector& resid, int comp);
+    template<class ResidualVector>
+    void gatherAndAccumulateNew(const ResidualVector& lIdx);
 
     LocalToGlobalCellFunc globalCell_; //!< Global cell indices
     Parallel::Communication comm_; //!< Communicator
     std::vector<std::vector<int>> cnv_X_{}; //!< Counts of worst cells for RPTRST CONV
     std::array<int,6> compIdx_{}; //!< Component indices
     int N_ = 0; //!< Number of cells to consider
+    std::vector<std::vector<int>> conv_new_{}; //!< Number of Newtons by each cell to converge for RPTRST CONV
 };
 
 } // namespace Opm

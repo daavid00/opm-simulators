@@ -42,6 +42,7 @@ void RSTConv::init(const std::size_t numCells,
     if (kw == rst_config.keywords.end()) {
         N_ = 0;
         cnv_X_.clear();
+        conv_new_.clear();
         return;
     }
 
@@ -53,6 +54,11 @@ void RSTConv::init(const std::size_t numCells,
         if (compIdx_[i] > -1) {
             cnv_X_[i].resize(numCells);
         }
+    }
+    conv_new_.resize(1);
+    conv_new_[0].resize(numCells);
+    for (std::size_t index = 0; index < numCells; ++index) {
+        conv_new_[0][index] = 1;
     }
 }
 
@@ -69,6 +75,7 @@ void RSTConv::outputRestart(data::Solution& sol)
                           }
                           ++i;
                       });
+        sol.insert("CONV_NEW", std::move(conv_new_[0]), data::TargetType::RESTART_SOLUTION);
     }
 }
 
@@ -89,8 +96,74 @@ void RSTConv::update(const ResidualVector& resid)
                           [&resid,c = compIdx_[i]](const int a, const int b)
                           { return std::abs(resid[a][c]) > std::abs(resid[b][c]); });
 
-        this->gatherAndAccumulate(cix, resid, i);
+        //this->gatherAndAccumulate(cix, resid, i);
     }
+}
+
+// void RSTConv::updateConvNew(const unsigned cell_idx)
+// {
+//     if (N_ == 0) {
+//         return;
+//     }
+//     std::cout << "N_: " << N_ << " rank: " << comm_.rank() << " ind: " << cell_idx << " glob: " << globalCell_(cell_idx) << std::endl;
+//     if (comm_.size() == 1) {
+//         ++conv_new_[cell_idx];
+//         return;
+//     }
+
+//     std::vector<double> send_values(N_);
+//     std::vector<double> values(comm_.rank() == 0 ? comm_.size() * N_ : 0);
+//     std::vector<int> send_idx(N_);
+//     std::vector<int> gIdx(comm_.rank() == 0 ? comm_.size() * N_ : 0);
+//     for (int i = 0; i < N_; ++i) {
+//         send_idx[i] = globalCell_(cell_idx);
+//     }
+//     comm_.gather(send_idx.data(), gIdx.data(), N_, 0);
+//     if (comm_.rank() != 0) {
+//         return;
+//     }
+
+//     for (int n = 0; n < N_; ++n) {
+//         ++conv_new_[cell_idx];
+//     }
+// }
+
+template<class ResidualVector>
+void RSTConv::updateConvNew(const ResidualVector& resid)
+{
+    if (N_ == 0 || resid.size() == 0) {
+        return;
+    }
+
+    this->gatherAndAccumulateNew(resid);
+}
+
+template<class ResidualVector>
+void RSTConv::gatherAndAccumulateNew(const ResidualVector& resid)
+{
+    if (comm_.size() == 1) {
+        //  for (int n = 0; n < lIdx.size(); ++n) {
+        //     ++conv_new_[lIdx[n]];
+        // }
+        return;
+    }
+
+    std::vector<int> send_idx( N_);
+    std::vector<int> gIdx(comm_.rank() == 0 ? comm_.size() * N_ : 0);
+    for (int i = 0; i <  N_; ++i) {
+        std::cout << "N_: " << N_ << " rank: " << comm_.rank() << " ind: " << i << " glob: " << globalCell_(i) << std::endl;
+        send_idx[i] = globalCell_(gIdx[i]);
+    }
+    //send_idx[0] = globalCell_(lIdx[0]);
+    std::cout << "salio" << std::endl;
+    comm_.gather(send_idx.data(), gIdx.data(), N_, 0);
+    if (comm_.rank() != 0) {
+        return;
+    }
+
+    // for (int n = 0; n < gIdx.size(); ++n) {
+    //     ++conv_new_[n];
+    // }
 }
 
 template<class ResidualVector>
@@ -138,6 +211,22 @@ using BFV = Dune::BlockVector<Dune::FieldVector<Scalar,Size>>;
     template void RSTConv::update(const BFV<T,SIZE>&);                   \
     template void RSTConv::gatherAndAccumulate(const std::vector<int>&,  \
                                                const BFV<T,SIZE>&, int);
+    template void RSTConv::gatherAndAccumulateNew(const BFV<T,SIZE>&);
+
+#define INSTANTIATE_TYPE(T) \
+    INSTANTIATE(T,1)        \
+    INSTANTIATE(T,2)        \
+    INSTANTIATE(T,3)        \
+    INSTANTIATE(T,4)        \
+    INSTANTIATE(T,5)        \
+    INSTANTIATE(T,6)
+
+#define INSTANTIATE(T,SIZE)                                              \
+    template void RSTConv::update(const BFV<T,SIZE>&);                   \
+    template void RSTConv::gatherAndAccumulate(const std::vector<int>&,  \
+                                               const BFV<T,SIZE>&, int); \
+    template void RSTConv::updateNew(const BFV<T,SIZE>&);                \
+    template void RSTConv::gatherAndAccumulateNew(const BFV<T,SIZE>&);
 
 #define INSTANTIATE_TYPE(T) \
     INSTANTIATE(T,1)        \

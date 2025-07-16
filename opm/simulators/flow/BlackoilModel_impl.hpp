@@ -893,7 +893,54 @@ getReservoirConvergence(const double reportTime,
             report.setReservoirConvergenceMetric(types[ii], compIdx, res[ii], tol[ii]);
         }
     }
+    auto& rst_conv = simulator_.problem().eclWriter().mutableOutputModule().getConv();
+    const auto& residual = simulator_.model().linearizer().residual();
+    const auto& gridView = this->simulator().gridView();
+    const IsNumericalAquiferCell isNumericalAquiferCell(gridView.grid());
+    // for (std::size_t cell_idx = 0; cell_idx < simulator_.vanguard().globalNumCells(); ++cell_idx) {
+    //     const auto& pvValue = simulator_.problem().referencePorosity(cell_idx, /*timeIdx=*/0) *
+    //                           simulator_.model().dofTotalVolume(cell_idx);
+    //     for (int compIdx = 0; compIdx < numComp; ++compIdx) {
+    //         auto tol = (has_energy_ && compIdx == contiEnergyEqIdx) ? tol_cnv_energy : tol_cnv;
+    //         const Scalar connew = std::abs(B_avg[compIdx] * residual[cell_idx][compIdx]) * dt / pvValue;
+    //         if (std::isnan(connew) || connew > maxResidualAllowed() || connew < 0.0 || connew > tol) {
+    //             rst_conv.updateConvNew(cell_idx);
+    //             break;
+    //         }
+    //     }
+    // }
+    ElementContext elemCtx(this->simulator());
+    std::vector< int > localRes;
+    localRes.reserve( simulator_.vanguard().globalNumCells() );
+    OPM_BEGIN_PARALLEL_TRY_CATCH();
+    unsigned idx = 0;
+    for (const auto& elem : elements(gridView, Dune::Partitions::interior)) {
+        // Skip cells of numerical Aquifer
+        if (isNumericalAquiferCell(elem)) {
+            continue;
+        }
 
+        elemCtx.updatePrimaryStencil(elem);
+
+        const unsigned cell_idx = elemCtx.globalSpaceIndex(/*spaceIdx=*/0, /*timeIdx=*/0);
+        const auto pvValue = simulator_.problem().referencePorosity(cell_idx, /*timeIdx=*/0)
+            * simulator_.model().dofTotalVolume(cell_idx);
+        //localRes[idx] = 0;
+        for (int compIdx = 0; compIdx < numComp; ++compIdx) {
+            auto tol = (has_energy_ && compIdx == contiEnergyEqIdx) ? tol_cnv_energy : tol_cnv;
+            const Scalar connew = std::abs(B_avg[compIdx] * residual[cell_idx][compIdx]) * dt / pvValue;
+            if (std::isnan(connew) || connew > maxResidualAllowed() || connew < 0.0 || connew > tol) {
+                //rst_conv.updateConvNew(cell_idx);
+                localRes.push_back(cell_idx);
+                break;
+            }
+        }
+        ++idx;
+    }
+    //this->simulator().vanguard().grid().comm().barrier();
+    OPM_END_PARALLEL_TRY_CATCH("BlackoilModel::conv_new() failed: ",
+                               this->grid_.comm());
+    rst_conv.updateConvNew(residual);
     // Output of residuals.
     if (this->terminal_output_) {
         // Only rank 0 does print to std::cout
