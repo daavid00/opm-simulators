@@ -562,9 +562,9 @@ update(bool global, const TransUpdateQuantities update_quantities,
         // when computing the gobal transmissibilities and all warnings will
         // be seen in a parallel. Unfortunately, when we do not use transmissibilities
         // we will only see warnings for the partition of process 0 and also false positives.
-        this->applyEditNncToGridTrans_(globalToLocal);
         this->applyPinchNncToGridTrans_(globalToLocal, applyNncMultregT);
         this->applyNncToGridTrans_(globalToLocal);
+        this->applyEditNncToGridTrans_(globalToLocal);
         this->applyEditNncrToGridTrans_(globalToLocal);
         if (applyNncMultregT) {
             this->applyNncMultreg_(globalToLocal);

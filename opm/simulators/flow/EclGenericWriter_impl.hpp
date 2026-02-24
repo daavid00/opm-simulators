@@ -432,46 +432,8 @@ exportNncStructure_(const std::unordered_map<int,int>& cartesianToActive,
     };
 
     const auto& nncData = this->eclState_.getInputNNC().input();
+    const auto& nncEdit = this->eclState_.getInputNNC().edit();
     const auto& unitSystem = this->eclState_.getDeckUnitSystem();
-
-    for (const auto& entry : nncData) {
-        // Ignore most explicit NNCs between otherwise neighbouring cells.
-        // We keep NNCs that involve cells with numerical aquifers even if
-        // these might be between neighbouring cells in the Cartesian
-        // grid--e.g., between cells (I,J,K) and (I+1,J,K).  All such
-        // connections should be written to NNC output arrays provided the
-        // transmissibility value is sufficiently large.
-        //
-        // The condition cell2 >= cell1 holds by construction of nncData.
-        assert (entry.cell2 >= entry.cell1);
-
-        if (! isCartesianNeighbour(entry.cell1, entry.cell2) ||
-            isNumAquConn(entry.cell1, entry.cell2))
-        {
-            // Pick up transmissibility value from 'globalTrans()' since
-            // multiplier keywords like MULTREGT might have impacted the
-            // values entered in primary sources like NNC/EDITNNC/EDITNNCR.
-            const auto c1 = activeCell(entry.cell1);
-            const auto c2 = activeCell(entry.cell2);
-
-            if ((c1 < 0) || (c2 < 0)) {
-                // Connection between inactive cells?  Unexpected at this
-                // level.  Might consider 'throw'ing if this happens...
-                continue;
-            }
-
-            const auto trans = this->globalTrans().transmissibility(c1, c2);
-            const auto tt = unitSystem
-                .from_si(UnitSystem::measure::transmissibility, trans);
-
-            // ECLIPSE ignores NNCs (with EDITNNC/EDITNNCR applied) with
-            // small transmissibility values.  Seems like the threshold is
-            // 1.0e-6 in output units.
-            if (std::isnormal(tt) && ! (tt < 1.0e-6)) {
-                this->outputNnc_.emplace_back(entry.cell1, entry.cell2, trans);
-            }
-        }
-    }
 
     auto isDirectNeighbours = [&isCartesianNeighbour, &cartesianToActive,
                                cartDims = &this->cartMapper_.cartesianDimensions()]
@@ -526,7 +488,16 @@ exportNncStructure_(const std::unordered_map<int,int>& cartesianToActive,
                        (candidate->cell1 == cc1) &&
                        (candidate->cell2 == cc2))
                 {
-                    t -= candidate->trans;
+                    auto trans = candidate->trans;
+                    if (! nncEdit.empty()) {
+                        for (const auto& entryEdit : nncEdit) {
+                            if (cc1 == entryEdit.cell1 && cc2 == entryEdit.cell2) {
+                                trans *= entryEdit.trans;
+                                break;
+                            }
+                        }
+                    }
+                    t -= trans;
                     ++candidate;
                 }
 
@@ -541,6 +512,72 @@ exportNncStructure_(const std::unordered_map<int,int>& cartesianToActive,
                 if (std::isnormal(tt) && (tt > 1.0e-12)) {
                     this->outputNnc_.emplace_back(cc1, cc2, t);
                 }
+            }
+        }
+    }
+
+    // Do not include the generated NNCs transsmisibilities in the input NNCs
+    const auto generatedNnc = outputNnc_;
+    std::size_t loc = 0;
+
+    for (const auto& entry : nncData) {
+        // Ignore most explicit NNCs between otherwise neighbouring cells.
+        // We keep NNCs that involve cells with numerical aquifers even if
+        // these might be between neighbouring cells in the Cartesian
+        // grid--e.g., between cells (I,J,K) and (I+1,J,K).  All such
+        // connections should be written to NNC output arrays provided the
+        // transmissibility value is sufficiently large.
+        //
+        // The condition cell2 >= cell1 holds by construction of nncData.
+        assert (entry.cell2 >= entry.cell1);
+
+        if (! isCartesianNeighbour(entry.cell1, entry.cell2) ||
+            isNumAquConn(entry.cell1, entry.cell2))
+        {
+            bool foundNncEdit = false;
+            auto trans = entry.trans;
+            if (! nncEdit.empty()) {
+                for (const auto& entryEdit : nncEdit) {
+                    if (entry.cell1 == entryEdit.cell1 && entry.cell2 == entryEdit.cell2) {
+                        trans *= entryEdit.trans;
+                        foundNncEdit = true;
+                        break;
+                    }
+                }
+            }
+            if (! foundNncEdit) {
+                // Pick up transmissibility value from 'globalTrans()' since
+                // multiplier keywords like MULTREGT might have impacted the
+                // values entered in primary sources like NNC/EDITNNC/EDITNNCR.
+                const auto c1 = activeCell(entry.cell1);
+                const auto c2 = activeCell(entry.cell2);
+
+                if ((c1 < 0) || (c2 < 0)) {
+                    // Connection between inactive cells?  Unexpected at this
+                    // level.  Might consider 'throw'ing if this happens...
+                    continue;
+                }
+
+                trans = this->globalTrans().transmissibility(c1, c2);
+
+                if (! generatedNnc.empty()) {
+                    for (const auto& generated : generatedNnc) {
+                        if (entry.cell1 == generated.cell1 && entry.cell2 == generated.cell2) {
+                            trans -= generated.trans;
+                            break;
+                        }
+                    }
+                }
+            }
+            const auto tt = unitSystem
+                .from_si(UnitSystem::measure::transmissibility, trans);
+
+            // ECLIPSE ignores NNCs (with EDITNNC/EDITNNCR applied) with
+            // small transmissibility values.  Seems like the threshold is
+            // 1.0e-6 in output units.
+            if (std::isnormal(tt) && ! (tt < 1.0e-6)) {
+                this->outputNnc_.emplace(outputNnc_.begin() + loc, entry.cell1, entry.cell2, trans);
+                loc++;
             }
         }
     }
