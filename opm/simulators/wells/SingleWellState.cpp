@@ -203,6 +203,12 @@ Scalar SingleWellState<Scalar, IndexTraits>::sum_solvent_rates() const
 }
 
 template<typename Scalar, typename IndexTraits>
+Scalar SingleWellState<Scalar, IndexTraits>::sum_particle_rates() const
+{
+    return this->sum_connection_rates(this->perf_data.particle_rates);
+}
+
+template<typename Scalar, typename IndexTraits>
 Scalar SingleWellState<Scalar, IndexTraits>::sum_microbial_rates() const
 {
     return this->sum_connection_rates(this->perf_data.microbial_rates);

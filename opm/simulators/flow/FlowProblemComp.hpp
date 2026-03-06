@@ -621,6 +621,11 @@ private:
         throw std::logic_error("MICP is disabled for compositional modeling and you're trying to add urea to BC");
     }
 
+    void handleParticleBC(const BCProp::BCFace& /* bc */, RateVector& /* rate */) const override
+    {
+        throw std::logic_error("PARTICLE is disabled for compositional modeling and you're trying to add particle to BC");
+    }
+
     FlowThresholdPressure<TypeTag> thresholdPressures_;
 
     std::vector<InitialFluidState> initialFluidStates_;

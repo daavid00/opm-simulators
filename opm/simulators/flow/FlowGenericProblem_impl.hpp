@@ -102,6 +102,8 @@ serializationTestObject(const EclipseState& eclState,
     result.overburdenPressure_ = {11.0};
     result.solventSaturation_ = {15.0};
     result.solventRsw_ = {18.0};
+    result.particleConcentration_ = {20.0};
+    result.particleVolumeFraction_ = {23.0};
     result.polymer_ = PolymerSolutionContainer<Scalar>::serializationTestObject();
     result.bioeffects_ = BioeffectsSolutionContainer<Scalar>::serializationTestObject();
     result.CO2H2_ = CO2H2SolutionContainer<Scalar>::serializationTestObject();
@@ -478,7 +480,8 @@ readBlackoilExtentionsInitialConditions_(std::size_t numDof,
                                          bool enablePolymer,
                                          bool enablePolymerMolarWeight,
                                          bool enableBioeffects,
-                                         bool enableMICP)
+                                         bool enableMICP,
+                                         bool enableParticle)
 {
     auto getArray = [](const std::vector<double>& input)
     {
@@ -544,6 +547,19 @@ readBlackoilExtentionsInitialConditions_(std::size_t numDof,
             }
         }
     }
+
+    if (enableParticle) {
+        if (eclState_.fieldProps().has_double("PARTICLS")) {
+            particleConcentration_ = getArray(eclState_.fieldProps().get_double("PARTICLS"));
+        } else {
+            particleConcentration_.resize(numDof, 0.0);
+        }
+        if (eclState_.fieldProps().has_double("PARTICLR")) {
+            particleVolumeFraction_ = getArray(eclState_.fieldProps().get_double("PARTICLR"));
+        } else {
+            particleVolumeFraction_.resize(numDof, 0.0);
+        }
+    }
 }
 
 template<class GridView, class FluidSystem>
@@ -601,7 +617,27 @@ solventRsw(unsigned elemIdx) const
     return solventRsw_[elemIdx];
 }
 
+template<class GridView, class FluidSystem>
+typename FlowGenericProblem<GridView,FluidSystem>::Scalar
+FlowGenericProblem<GridView,FluidSystem>::
+particleConcentration(unsigned elemIdx) const
+{
+    if (particleConcentration_.empty())
+        return 0;
 
+    return particleConcentration_[elemIdx];
+}
+
+template<class GridView, class FluidSystem>
+typename FlowGenericProblem<GridView,FluidSystem>::Scalar
+FlowGenericProblem<GridView,FluidSystem>::
+particleVolumeFraction(unsigned elemIdx) const
+{
+    if (particleVolumeFraction_.empty())
+        return 0;
+
+    return particleVolumeFraction_[elemIdx];
+}
 
 template<class GridView, class FluidSystem>
 typename FlowGenericProblem<GridView,FluidSystem>::Scalar
@@ -749,7 +785,9 @@ operator==(const FlowGenericProblem& rhs) const
            this->solventSaturation_ == rhs.solventSaturation_ &&
            this->solventRsw_ == rhs.solventRsw_ &&
            this->polymer_ == rhs.polymer_ &&
-           this->bioeffects_ == rhs.bioeffects_;
+           this->bioeffects_ == rhs.bioeffects_ &&
+           this->particleConcentration_ == rhs.particleConcentration_ &&
+           this->particleVolumeFraction_ == rhs.particleVolumeFraction_;
 }
 
 } // namespace Opm

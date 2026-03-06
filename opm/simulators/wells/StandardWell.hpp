@@ -38,6 +38,7 @@
 #include <opm/models/blackoil/blackoilfoammodules.hh>
 #include <opm/models/blackoil/blackoilbrinemodules.hh>
 #include <opm/models/blackoil/blackoilbioeffectsmodules.hh>
+#include <opm/models/blackoil/blackoilparticlemodules.hh>
 
 #include <opm/material/densead/Evaluation.hpp>
 #include <opm/input/eclipse/Schedule/ScheduleTypes.hpp>
@@ -88,6 +89,7 @@ namespace Opm
         using Base::has_energy;
         using Base::has_bioeffects;
         using Base::has_micp;
+        using Base::has_particle;
 
         using PolymerModule =  BlackOilPolymerModule<TypeTag>;
         using FoamModule = BlackOilFoamModule<TypeTag>;

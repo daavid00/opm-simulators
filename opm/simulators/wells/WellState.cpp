@@ -599,6 +599,10 @@ report(const int* globalCellIdxMap,
             well.rates.set(rt::energy,  ws.energy_rate);
         }
 
+        if (pu.hasParticle()) {
+            well.rates.set(rt::particle, ws.sum_particle_rates());
+        }
+
         if (pu.hasBiofilm() || pu.hasMICP()) {
             well.rates.set(rt::microbial, ws.sum_microbial_rates());
             if (pu.hasMICP()) {

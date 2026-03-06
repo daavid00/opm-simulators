@@ -65,6 +65,7 @@
 #define INSTANTIATE_TYPE_INDICES(CLASS, T)                                                  \
     INSTANTIATE_CLASS(CLASS,T,BlackOilOnePhaseIndices<0u,0u,0u,0u,false,false,0u,1u,0u>) \
     INSTANTIATE_CLASS(CLASS,T,BlackOilOnePhaseIndices<0u,0u,0u,1u,false,false,0u,1u,0u>) \
+    INSTANTIATE_CLASS(CLASS,T,BlackOilOnePhaseIndices<0u,0u,0u,0u,false,false,0u,1u,2u>) \
     INSTANTIATE_CLASS(CLASS,T,BlackOilOnePhaseIndices<0u,0u,0u,0u,false,false,0u,1u,5u>) \
     INSTANTIATE_CLASS(CLASS,T,BlackOilTwoPhaseIndices<0u,0u,0u,0u,false,false,0u,0u,0u>) \
     INSTANTIATE_CLASS(CLASS,T,BlackOilTwoPhaseIndices<0u,0u,0u,0u,false,false,0u,1u,0u>) \

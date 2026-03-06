@@ -96,10 +96,12 @@ list (APPEND MAIN_SOURCE_FILES
   opm/models/blackoil/blackoilextboparams.cpp
   opm/models/blackoil/blackoilfoamparams.cpp
   opm/models/blackoil/blackoilnewtonmethodparams.cpp
+  opm/models/blackoil/blackoilparticleparams.cpp
   opm/models/blackoil/blackoilpolymerparams.cpp
   opm/models/blackoil/blackoilsolventparams.cpp
   opm/models/io/vtkblackoilbioeffectsparams.cpp
   opm/models/io/vtkblackoilenergyparams.cpp
+  opm/models/io/vtkblackoilparticleparams.cpp
   opm/models/io/vtkblackoilpolymerparams.cpp
   opm/models/io/vtkblackoilparams.cpp
   opm/models/io/vtkblackoilsolventparams.cpp
@@ -728,6 +730,8 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/models/blackoil/blackoilnewtonmethod.hpp
   opm/models/blackoil/blackoilnewtonmethodparams.hpp
   opm/models/blackoil/blackoilonephaseindices.hh
+  opm/models/blackoil/blackoilparticlemodules.hh
+  opm/models/blackoil/blackoilparticleparams.hpp
   opm/models/blackoil/blackoilpolymermodules.hh
   opm/models/blackoil/blackoilpolymerparams.hpp
   opm/models/blackoil/blackoilprimaryvariables.hh
@@ -826,6 +830,8 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/models/io/vtkblackoilenergyparams.hpp
   opm/models/io/vtkblackoilmodule.hpp
   opm/models/io/vtkblackoilparams.hpp
+  opm/models/io/vtkblackoilparticlemodule.hpp
+  opm/models/io/vtkblackoilparticleparams.hpp
   opm/models/io/vtkblackoilpolymermodule.hpp
   opm/models/io/vtkblackoilpolymerparams.hpp
   opm/models/io/vtkblackoilsolventmodule.hpp

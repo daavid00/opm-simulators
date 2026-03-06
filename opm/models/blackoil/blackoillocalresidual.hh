@@ -38,6 +38,7 @@
 #include <opm/models/blackoil/blackoilenergymodules.hh>
 #include <opm/models/blackoil/blackoilextbomodules.hh>
 #include <opm/models/blackoil/blackoilfoammodules.hh>
+#include <opm/models/blackoil/blackoilparticlemodules.hh>
 #include <opm/models/blackoil/blackoilpolymermodules.hh>
 #include <opm/models/blackoil/blackoilproperties.hh>
 #include <opm/models/blackoil/blackoilsolventmodules.hh>
@@ -96,6 +97,7 @@ class BlackOilLocalResidual : public GetPropType<TypeTag, Properties::DiscLocalR
     using BrineModule = BlackOilBrineModule<TypeTag>;
     using DiffusionModule = BlackOilDiffusionModule<TypeTag, enableDiffusion>;
     using BioeffectsModule = BlackOilBioeffectsModule<TypeTag>;
+    using ParticleModule = BlackOilParticleModule<TypeTag>;
     using ConvectiveMixingModule = BlackOilConvectiveMixingModule<TypeTag, enableConvectiveMixing>;
 
 public:
@@ -193,6 +195,9 @@ public:
 
         // deal with bioeffects (if present)
         BioeffectsModule::addStorage(storage, intQuants);
+
+        // deal with particle (if present)
+        ParticleModule::addStorage(storage, intQuants);
     }
 
     /*!
@@ -245,6 +250,9 @@ public:
         // deal with bioeffects (if present)
         BioeffectsModule::computeFlux(flux, elemCtx, scvfIdx, timeIdx);
 
+        // deal with foam (if present)
+        ParticleModule::computeFlux(flux, elemCtx, scvfIdx, timeIdx);
+
         // deal with diffusion (if present)
         DiffusionModule::addDiffusiveFlux(flux, elemCtx, scvfIdx, timeIdx);
 
@@ -265,6 +273,9 @@ public:
 
         // deal with MICP (if present)
         BioeffectsModule::addSource(source, elemCtx, dofIdx, timeIdx);
+
+        // deal with Particle (if present)
+        ParticleModule::addSource(source, elemCtx, dofIdx, timeIdx);
 
         // scale the source term of the energy equation
         if constexpr (enableFullyImplicitThermal) {

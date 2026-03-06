@@ -621,6 +621,20 @@ namespace Opm
                                                        saltConcentration);
         }
 
+        if constexpr (has_particle) {
+            std::variant<Scalar,EvalWell> particleConcentration;
+            if (this->isInjector()) {
+                particleConcentration = this->wparticle();
+            } else {
+                particleConcentration = this->extendEval(intQuants.particleConcentration());
+            }
+
+            connectionRates[perf][Indices::contiSuspendedParticleEqIdx] =
+                this->connections_.connectionRateParticle(perf_data.particle_rates[perf],
+                                                          cq_s,
+                                                          particleConcentration);
+        }
+
         if constexpr (has_bioeffects) {
             std::variant<Scalar,EvalWell> microbialConcentration;
             if constexpr (has_micp) {
@@ -1229,7 +1243,7 @@ namespace Opm
     {
         // the following implementation assume that the polymer is always after the w-o-g phases
         // For the polymer, energy and foam cases, there is one more mass balance equations of reservoir than wells
-        assert((int(B_avg.size()) == this->num_conservation_quantities_) || has_polymer || has_energy || has_foam || has_brine || has_zFraction || has_bioeffects);
+        assert((int(B_avg.size()) == this->num_conservation_quantities_) || has_polymer || has_energy || has_foam || has_brine || has_zFraction || has_bioeffects || has_particle);
 
         auto& deferred_logger = groupStateHelper.deferredLogger();
         Scalar tol_wells = this->param_.tolerance_wells_;

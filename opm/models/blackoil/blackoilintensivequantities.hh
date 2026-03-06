@@ -45,6 +45,7 @@
 #include <opm/models/blackoil/blackoilenergymodules.hh>
 #include <opm/models/blackoil/blackoilextbomodules.hh>
 #include <opm/models/blackoil/blackoilfoammodules.hh>
+#include <opm/models/blackoil/blackoilparticlemodules.hh>
 #include <opm/models/blackoil/blackoilpolymermodules.hh>
 #include <opm/models/blackoil/blackoilproperties.hh>
 #include <opm/models/blackoil/blackoilsolventmodules.hh>
@@ -83,6 +84,7 @@ class BlackOilIntensiveQuantities
     , public BlackOilBrineIntensiveQuantities<TypeTag, getPropValue<TypeTag, Properties::EnableBrine>()>
     , public BlackOilEnergyIntensiveQuantities<TypeTag, getPropValue<TypeTag, Properties::EnergyModuleType>()>
     , public BlackOilBioeffectsIntensiveQuantities<TypeTag, getPropValue<TypeTag, Properties::EnableBioeffects>()>
+    , public BlackOilParticleIntensiveQuantities<TypeTag, getPropValue<TypeTag, Properties::EnableParticle>()>
     , public BlackOilConvectiveMixingIntensiveQuantities<TypeTag, getPropValue<TypeTag, Properties::EnableConvectiveMixing>()>
 {
     using ParentType = GetPropType<TypeTag, Properties::DiscIntensiveQuantities>;
@@ -110,6 +112,7 @@ class BlackOilIntensiveQuantities
     enum { enableDispersion = getPropValue<TypeTag, Properties::EnableDispersion>() };
     enum { enableConvectiveMixing = getPropValue<TypeTag, Properties::EnableConvectiveMixing>() };
     enum { enableBioeffects = getPropValue<TypeTag, Properties::EnableBioeffects>() };
+    enum { enableParticle = getPropValue<TypeTag, Properties::EnableParticle>() };
     enum { enableMICP = Indices::enableMICP };
     enum { numPhases = getPropValue<TypeTag, Properties::NumPhases>() };
     enum { waterCompIdx = FluidSystem::waterCompIdx };
@@ -135,6 +138,8 @@ class BlackOilIntensiveQuantities
     using BrineIntQua = BlackOilBrineIntensiveQuantities<TypeTag, enableSaltPrecipitation>;
     using BioeffectsModule = BlackOilBioeffectsModule<TypeTag>;
     using BioeffectsIntQua = BlackOilBioeffectsIntensiveQuantities<TypeTag, enableBioeffects>;
+    using ParticleModule = BlackOilParticleModule<TypeTag>;
+    using ParticleIntQua = BlackOilParticleIntensiveQuantities<TypeTag, enableParticle>;
 
 public:
     using FluidState = BlackOilFluidState<Evaluation,
@@ -636,6 +641,13 @@ public:
             porosity_ -= min(biofilm_ + calcite_, referencePorosity_ - 1e-8);
         }
 
+        // deal with particle (minimum porosity of 1e-8 to prevent numerical issues)
+        if constexpr (enableParticle) {
+            const Evaluation particle_ = priVars.makeEvaluation(Indices::particleVolumeFractionIdx,
+                                                                timeIdx, linearizationType);
+            porosity_ -= min(particle_, referencePorosity_ - 1e-8);
+        }
+
         // deal with salt-precipitation
         if (enableSaltPrecipitation && priVars.primaryVarsMeaningBrine() == PrimaryVariables::BrineMeaning::Sp) {
             const Evaluation Sp = priVars.makeEvaluation(Indices::saltConcentrationIdx, timeIdx);
@@ -698,6 +710,9 @@ public:
         }
         if constexpr (enableBrine) {
             asImp_().saltPropertiesUpdate_(elemCtx, dofIdx, timeIdx);
+        }
+        if constexpr (enableParticle) {
+            asImp_().particlePropertiesUpdate_(elemCtx, dofIdx, timeIdx);
         }
         if constexpr (enableConvectiveMixing) {
             // The ifs are here is to avoid extra calculations for
@@ -879,8 +894,11 @@ public:
         else if constexpr (enableSaltPrecipitation) {
             return BrineIntQua::permFactor();
         }
+        else if constexpr (enableParticle) {
+            return ParticleIntQua::permFactor();
+        }
         else {
-            throw std::logic_error("permFactor() called but salt precipitation or bioeffects are disabled");
+            throw std::logic_error("permFactor() called but salt precipitation, bioeffects, or particle are disabled");
         }
     }
 
@@ -900,6 +918,7 @@ private:
     friend BlackOilFoamIntensiveQuantities<TypeTag, enableFoam>;
     friend BlackOilBrineIntensiveQuantities<TypeTag, enableBrine>;
     friend BlackOilBioeffectsIntensiveQuantities<TypeTag, enableBioeffects>;
+    friend BlackOilParticleIntensiveQuantities<TypeTag, enableParticle>;
 
     OPM_HOST_DEVICE Implementation& asImp_()
     { return *static_cast<Implementation*>(this); }

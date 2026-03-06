@@ -185,6 +185,7 @@ public:
     Scalar sum_oxygen_rates() const;
     Scalar sum_urea_rates() const;
     Scalar sum_wat_mass_rates() const;
+    Scalar sum_particle_rates() const;
 
     Scalar sum_filtrate_rate() const;
     Scalar sum_filtrate_total() const;
