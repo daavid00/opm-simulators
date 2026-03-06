@@ -136,7 +136,8 @@ GenericOutputBlackoilModule(const EclipseState& eclState,
                             bool enableBrine,
                             bool enableSaltPrecipitation,
                             bool enableExtbo,
-                            bool enableBioeffects)
+                            bool enableBioeffects,
+                            bool enableParticle)
     : eclState_(eclState)
     , schedule_(schedule)
     , summaryState_(summaryState)
@@ -155,6 +156,7 @@ GenericOutputBlackoilModule(const EclipseState& eclState,
     , enableSaltPrecipitation_(enableSaltPrecipitation)
     , enableExtbo_(enableExtbo)
     , enableBioeffects_(enableBioeffects)
+    , enableParticle_(enableParticle)
     , flowsC_(schedule, summaryConfig, isInterior)
     , rftC_(eclState_, schedule_,
             [this](const std::string& wname) { return this->isOwnedByCurrentRank(wname); },
@@ -388,6 +390,8 @@ assignToSolution(data::Solution& sol)
 
     auto extendedSolutionArrays = std::array {
         DataEntry{"DRSDTCON", UnitSystem::measure::gas_oil_ratio_rate, drsdtcon_},
+        DataEntry{"PARTICLR", UnitSystem::measure::identity,           rParticle_},
+        DataEntry{"PARTICLS", UnitSystem::measure::concentration,      sParticle_},
         DataEntry{"PERMFACT", UnitSystem::measure::identity,           permFact_},
         DataEntry{"PORV_RC",  UnitSystem::measure::identity,           rockCompPorvMultiplier_},
         DataEntry{"PRES_OVB", UnitSystem::measure::pressure,           overburdenPressure_},
@@ -520,6 +524,8 @@ setRestart(const data::Solution& sol,
 
     const auto fields = std::array{
         std::pair{"FOAM",     &cFoam_},
+        std::pair{"PARTICLR", &rParticle_},
+        std::pair{"PARTICLS", &sParticle_},
         std::pair{"PERMFACT", &permFact_},
         std::pair{"POLYMER",  &cPolymer_},
         std::pair{"PPCW",     &ppcw_},
@@ -735,7 +741,9 @@ doAllocBuffers(const unsigned bufferSize,
        Entry{&cFoam_,                             "", enableFoam_},
        Entry{&cSalt_,                             "", enableBrine_},
        Entry{&pSalt_,                             "", enableSaltPrecipitation_},
-       Entry{&permFact_,                          "", enableSaltPrecipitation_ || enableBioeffects_},
+       Entry{&rParticle_,                         "", enableParticle_},
+       Entry{&sParticle_,                         "", enableParticle_},
+       Entry{&permFact_,                          "", enableSaltPrecipitation_ || enableBioeffects_ || enableParticle_},
        Entry{&soMax_,                             "", oilvap.getType() == OilVapP::VAPPARS},
        Entry{&soMax_,                             "", hysteresisConfig &&
                                                       hysteresisConfig->enableNonWettingHysteresis() &&

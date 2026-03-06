@@ -69,7 +69,6 @@ class BlackOilNewtonMethod : public GetPropType<TypeTag, Properties::DiscNewtonM
     using FluidSystem = GetPropType<TypeTag, Properties::FluidSystem>;
     using Scalar = GetPropType<TypeTag, Properties::Scalar>;
     using Linearizer = GetPropType<TypeTag, Properties::Linearizer>;
-    using BioeffectsModule = BlackOilBioeffectsModule<TypeTag>;
 
     static const unsigned numEq = getPropValue<TypeTag, Properties::NumEq>();
     static constexpr bool enableSaltPrecipitation = getPropValue<TypeTag, Properties::EnableSaltPrecipitation>();
@@ -213,6 +212,7 @@ protected:
         static constexpr bool enableBrine = Indices::saltConcentrationIdx >= 0;
         static constexpr bool enableBioeffects = Indices::biofilmVolumeFractionIdx >= 0;
         static constexpr bool enableMICP = Indices::enableMICP;
+        static constexpr bool enableParticle = Indices::enableParticle;
 
         currentValue.checkDefined();
         Valgrind::CheckDefined(update);
@@ -413,6 +413,17 @@ protected:
                         nextValue[pvIdx] = std::clamp(nextValue[pvIdx], Scalar{0.0},
                                                                         this->problem().referencePorosity(globalDofIdx, 0) - 1e-8);
                     }
+                }
+            }
+
+            if constexpr (enableParticle) {
+                if (pvIdx == Indices::particleConcentrationIdx) {
+                    nextValue[pvIdx] = std::max(nextValue[pvIdx], Scalar{0.0});
+                }
+                if (pvIdx == Indices::particleVolumeFractionIdx) {
+                    nextValue[pvIdx] = std::clamp(nextValue[pvIdx],
+                                                  Scalar{0.0},
+                                                  this->problem().referencePorosity(globalDofIdx, 0) - 1e-8);
                 }
             }
         }

@@ -37,6 +37,7 @@
 #include <opm/models/blackoil/blackoilbioeffectsmodules.hh>
 #include <opm/models/blackoil/blackoilbrinemodules.hh>
 #include <opm/models/blackoil/blackoilfoammodules.hh>
+#include <opm/models/blackoil/blackoilparticlemodules.hh>
 #include <opm/models/blackoil/blackoilpolymermodules.hh>
 #include <opm/models/blackoil/blackoilsolventmodules.hh>
 #include <opm/models/common/multiphasebaseproperties.hh>

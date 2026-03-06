@@ -150,6 +150,18 @@ namespace Opm
     template<typename TypeTag>
     typename WellInterface<TypeTag>::Scalar
     WellInterface<TypeTag>::
+    wparticle() const
+    {
+        if constexpr (has_particle) {
+            return this->wparticle_();
+        }
+
+        return 0.0;
+    }
+
+    template<typename TypeTag>
+    typename WellInterface<TypeTag>::Scalar
+    WellInterface<TypeTag>::
     wmicrobes() const
     {
       if constexpr (has_micp) {

@@ -450,6 +450,13 @@ private:
     /// \return Simulation's status/exit code.
     int runWaterOnlyEnergy(const Phases& phases);
 
+    /// Run a single phase, water-only simulation with particle effects.
+    ///
+    /// Called from dispatchDynamic_()
+    ///
+    /// \return Simulation's status/exit code.
+    int runParticle();
+
     /// Run a simulation with brine, typically in a CCS workflow
     ///
     /// Called from dispatchDynamic_()
