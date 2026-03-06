@@ -206,6 +206,22 @@ public:
         return 0;
     }
 
+    Scalar getParticleConcentration(unsigned elemIdx) const
+    {
+        if (sParticle_.size() > elemIdx)
+            return sParticle_[elemIdx];
+
+        return 0;
+    }
+
+    Scalar getParticleVolumeFraction(unsigned elemIdx) const
+    {
+        if (rParticle_.size() > elemIdx)
+            return rParticle_[elemIdx];
+
+        return 0;
+    }
+
     Scalar getSaltConcentration(unsigned elemIdx) const
     {
         if (cSalt_.size() > elemIdx)
@@ -385,7 +401,8 @@ protected:
                         bool enableSaltPrecipitation,
                         bool enableExtbo,
                         bool enableBioeffects,
-                        bool enableGeochemistry);
+                        bool enableGeochemistry,
+                        bool enableParticle);
 
     void doAllocBuffers(unsigned bufferSize,
                         unsigned reportStepNum,
@@ -477,6 +494,7 @@ protected:
     bool enableExtbo_{false};
     bool enableBioeffects_{false};
     bool enableGeochemistry_{false};
+    bool enableParticle_{false};
 
     bool forceDisableFipOutput_{false};
     bool forceDisableFipresvOutput_{false};
@@ -524,6 +542,8 @@ protected:
     ScalarBuffer cFoam_;
     ScalarBuffer cSalt_;
     ScalarBuffer pSalt_;
+    ScalarBuffer rParticle_;
+    ScalarBuffer sParticle_;
     ScalarBuffer permFact_;
     ExtboContainer<Scalar> extboC_;
     ScalarBuffer soMax_;

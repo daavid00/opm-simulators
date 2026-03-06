@@ -55,6 +55,7 @@ DECLARE_MODULE(BlackOilDiffusion)
 DECLARE_MODULE(BlackOilDispersion)
 DECLARE_MODULE(BlackOilExtbo)
 DECLARE_MODULE(BlackOilFoam)
+DECLARE_MODULE(BlackOilParticle)
 DECLARE_MODULE(BlackOilPolymer)
 DECLARE_MODULE(BlackOilSolvent)
 

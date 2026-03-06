@@ -718,6 +718,25 @@ connectionRateBrine(Scalar& rate,
 template<typename FluidSystem, typename Indices>
 typename StandardWellConnections<FluidSystem, Indices>::Eval
 StandardWellConnections<FluidSystem, Indices>::
+connectionRateParticle(Scalar& rate,
+                       const std::vector<EvalWell>& cq_s,
+                       const std::variant<Scalar,EvalWell>& particleConcentration) const
+{
+    const unsigned waterCompIdx = FluidSystem::canonicalToActiveCompIdx(FluidSystem::waterCompIdx);
+    EvalWell cq_s_particle = cq_s[waterCompIdx];
+    if (well_.isInjector()) {
+        cq_s_particle *= std::get<Scalar>(particleConcentration);
+    } else {
+        cq_s_particle *= std::get<EvalWell>(particleConcentration);
+    }
+
+    rate = cq_s_particle.value();
+    return well_.restrictEval(cq_s_particle);
+}
+
+template<typename FluidSystem, typename Indices>
+typename StandardWellConnections<FluidSystem, Indices>::Eval
+StandardWellConnections<FluidSystem, Indices>::
 connectionRateFoam(const std::vector<EvalWell>& cq_s,
                    const std::variant<Scalar,EvalWell>& foamConcentration,
                    const Phase transportPhase,

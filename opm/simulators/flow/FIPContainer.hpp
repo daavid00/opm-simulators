@@ -86,6 +86,14 @@ public:
                           const Scalar   co2InWater,
                           const Scalar   mM);
 
+    bool hasSuspendedParticleMass() const;
+    void assignSuspendedParticleMass(const unsigned globalDofIdx,
+                                      const Scalar   suspendedParticleMass);
+
+    bool hasRetainedParticleMass() const;
+    void assignRetainedParticleMass(const unsigned globalDofIdx,
+                                      const Scalar   retainedParticleMass);
+
     bool hasMicrobialMass() const;
     void assignMicrobialMass(const unsigned globalDofIdx,
                              const Scalar   microbialMass);

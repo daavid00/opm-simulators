@@ -340,6 +340,40 @@ assignCo2InWater(const unsigned globalDofIdx,
 template<class FluidSystem>
 bool
 FIPContainer<FluidSystem>::
+hasSuspendedParticleMass() const
+{
+    return has(Inplace::Phase::SuspendedParticleMass);
+}
+
+template<class FluidSystem>
+void
+FIPContainer<FluidSystem>::
+assignSuspendedParticleMass(const unsigned globalDofIdx,
+                             const Scalar   suspendedParticleMass)
+{
+    this->fip_[Inplace::Phase::SuspendedParticleMass][globalDofIdx] = suspendedParticleMass;
+}
+
+template<class FluidSystem>
+bool
+FIPContainer<FluidSystem>::
+hasRetainedParticleMass() const
+{
+    return has(Inplace::Phase::RetainedParticleMass);
+}
+
+template<class FluidSystem>
+void
+FIPContainer<FluidSystem>::
+assignRetainedParticleMass(const unsigned globalDofIdx,
+                             const Scalar  retainedParticleMass)
+{
+    this->fip_[Inplace::Phase::RetainedParticleMass][globalDofIdx] = retainedParticleMass;
+}
+
+template<class FluidSystem>
+bool
+FIPContainer<FluidSystem>::
 hasMicrobialMass() const
 {
     return has(Inplace::Phase::MicrobialMass);

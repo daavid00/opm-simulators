@@ -88,12 +88,14 @@ class BlackOilLocalResidual : public GetPropType<TypeTag, Properties::DiscLocalR
     static constexpr bool enableFoam = getPropValue<TypeTag, Properties::EnableFoam>();
     static constexpr EnergyModules energyModuleType = getPropValue<TypeTag, Properties::EnergyModuleType>();
     static constexpr bool enableFullyImplicitThermal = energyModuleType == EnergyModules::FullyImplicitThermal;
+    static constexpr bool enableParticle = getPropValue<TypeTag, Properties::EnableParticle>();
     static constexpr bool enablePolymer = getPropValue<TypeTag, Properties::EnablePolymer>();
     static constexpr bool enableSolvent = getPropValue<TypeTag, Properties::EnableSolvent>();
 
     using Toolbox = MathToolbox<Evaluation>;
 
     using BioeffectsModule = BlackOilBioeffectsModule<TypeTag, enableBioeffects>;
+    using ParticleModule = BlackOilParticleModule<TypeTag, enableParticle>;
     using BrineModule = BlackOilBrineModule<TypeTag, enableBrine>;
     using ConvectiveMixingModule = BlackOilConvectiveMixingModule<TypeTag, enableConvectiveMixing>;
     using DiffusionModule = BlackOilDiffusionModule<TypeTag, enableDiffusion>;
@@ -212,6 +214,11 @@ public:
         if constexpr (enableBioeffects) {
             BioeffectsModule::addStorage(storage, intQuants);
         }
+
+        // deal with particle (if present)
+        if constexpr (enableParticle) {
+            ParticleModule::addStorage(storage, intQuants);
+        }
     }
 
     /*!
@@ -279,6 +286,11 @@ public:
             BioeffectsModule::computeFlux(flux, elemCtx, scvfIdx, timeIdx);
         }
 
+        // deal with particle (if present)
+        if constexpr (enableParticle) {
+            ParticleModule::computeFlux(flux, elemCtx, scvfIdx, timeIdx);
+        }
+
         // deal with diffusion (if present)
         if constexpr (enableDiffusion) {
             DiffusionModule::addDiffusiveFlux(flux, elemCtx, scvfIdx, timeIdx);
@@ -301,9 +313,14 @@ public:
         // retrieve the source term intrinsic to the problem
         elemCtx.problem().source(source, elemCtx, dofIdx, timeIdx);
 
-        // deal with MICP (if present)
+        // deal with bioeffects (if present)
         if constexpr (enableBioeffects) {
             BioeffectsModule::addSource(source, elemCtx, dofIdx, timeIdx);
+        }
+
+        // deal with Particle (if present)
+        if constexpr (enableParticle) {
+            ParticleModule::addSource(source, elemCtx, dofIdx, timeIdx);
         }
 
         // scale the source term of the energy equation

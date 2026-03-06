@@ -129,6 +129,7 @@ class OutputBlackOilModule : public GenericOutputModule<GetPropType<TypeTag, Pro
     static constexpr int waterCompIdx = FluidSystem::waterCompIdx;
     static constexpr EnergyModules energyModuleType = getPropValue<TypeTag, Properties::EnergyModuleType>();
     static constexpr bool enableBioeffects = getPropValue<TypeTag, Properties::EnableBioeffects>();
+    static constexpr bool enableParticle = getPropValue<TypeTag, Properties::EnableParticle>();
     static constexpr bool enableExtbo = getPropValue<TypeTag, Properties::EnableExtbo>();
     static constexpr bool enableFoam = getPropValue<TypeTag, Properties::EnableFoam>();
     static constexpr bool enablePolymer = getPropValue<TypeTag, Properties::EnablePolymer>();
@@ -173,7 +174,8 @@ public:
                    getPropValue<TypeTag, Properties::EnableSaltPrecipitation>(),
                    getPropValue<TypeTag, Properties::EnableExtbo>(),
                    getPropValue<TypeTag, Properties::EnableBioeffects>(),
-                   getPropValue<TypeTag, Properties::EnableGeochemistry>())
+                   getPropValue<TypeTag, Properties::EnableGeochemistry>(),
+                   getPropValue<TypeTag, Properties::EnableParticle>())
         , simulator_(simulator)
         , collectOnIORank_(collectOnIORank)
     {
@@ -1169,6 +1171,17 @@ private:
             }
         }
 
+         if constexpr(enableParticle) {
+            const auto surfVolWat = pv * getValue(fs.saturation(waterPhaseIdx)) *
+                                         getValue(fs.invB(waterPhaseIdx));
+            if (this->fipC_.hasRetainedParticleMass()) {
+                this->updateRetainedParticleMass(globalDofIdx, intQuants, totVolume);
+            }
+            if (this->fipC_.hasSuspendedParticleMass()) {
+                this->updateSuspendedParticleMass(globalDofIdx, intQuants, surfVolWat);
+            }
+        }
+
         if (this->fipC_.hasWaterMass() && FluidSystem::phaseIsActive(waterPhaseIdx))
         {
             this->updateWaterMass(globalDofIdx, fs, fip);
@@ -1300,6 +1313,26 @@ private:
         const Scalar rhoW = FluidSystem::referenceDensity(waterPhaseIdx, fs.pvtRegionIndex());
 
         this->fipC_.assignWaterMass(globalDofIdx, fip, rhoW);
+    }
+
+    template <typename IntensiveQuantities>
+    void updateSuspendedParticleMass(const unsigned             globalDofIdx,
+                                     const IntensiveQuantities& intQuants,
+                                     const double               surfVolWat)
+    {
+        const Scalar mass = surfVolWat * intQuants.particleConcentration().value();
+
+        this->fipC_.assignSuspendedParticleMass(globalDofIdx, mass);
+    }
+
+    template <typename IntensiveQuantities>
+    void updateRetainedParticleMass(const unsigned             globalDofIdx,
+                                    const IntensiveQuantities& intQuants,
+                                    const double               totVolume)
+    {
+        const Scalar mass = totVolume * intQuants.particleRetainedMass().value();
+
+        this->fipC_.assignRetainedParticleMass(globalDofIdx, mass);
     }
 
     template <typename IntensiveQuantities>
@@ -1541,6 +1574,30 @@ private:
             Entry{ScalarEntry{&this->permFact_,
                               [](const Context& ectx)
                               { return getValue(ectx.intQuants.permFactor()); }
+                  }
+            },
+            Entry{ScalarEntry{&this->rParticle_,
+                              [](const Context& ectx)
+                              { 
+                                  if constexpr (enableParticle) {
+                                      return getValue(ectx.intQuants.particleVolumeFraction()); 
+                                  }
+                                  else {
+                                      return Scalar{0};
+                                  }
+                              }
+                  }
+            },
+            Entry{ScalarEntry{&this->sParticle_,
+                              [](const Context& ectx)
+                             { 
+                                  if constexpr (enableParticle) {
+                                      return getValue(ectx.intQuants.particleConcentration()); 
+                                  }
+                                  else {
+                                      return Scalar{0};
+                                  }
+                              }
                   }
             },
             Entry{ScalarEntry{&this->rPorV_,
@@ -2855,6 +2912,34 @@ private:
                                          rhoW *
                                          model.dofTotalVolume(ectx.globalDofIdx) *
                                          getValue(ectx.intQuants.porosity());
+                              }
+                  }
+            },
+            Entry{ScalarEntry{"BRPIP",
+                              [&model = this->simulator_.model()](const Context& ectx)
+                              {
+                                  if constexpr (enableParticle) {
+                                      return model.dofTotalVolume(ectx.globalDofIdx) *
+                                             getValue(ectx.intQuants.particleRetainedMass());
+                                  }
+                                  else {
+                                      return Scalar{0};
+                                  }
+                              }
+                  }
+            },
+            Entry{ScalarEntry{"BSPIP",
+                              [&model = this->simulator_.model()](const Context& ectx)
+                              {
+                                  if constexpr (enableParticle) {
+                                      return getValue(ectx.intQuants.particleConcentration()) *
+                                              getValue(ectx.fs.saturation(waterPhaseIdx)) *
+                                              getValue(ectx.intQuants.porosity()) *
+                                              model.dofTotalVolume(ectx.globalDofIdx);
+                                  }
+                                  else {
+                                      return Scalar{0};
+                                  }
                               }
                   }
             },

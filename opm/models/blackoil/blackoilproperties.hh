@@ -82,6 +82,10 @@ struct EnableDisgasInWater { using type = UndefinedProperty; };
 template<class TypeTag, class MyTypeTag>
 struct EnableBioeffects { using type = UndefinedProperty; };
 
+//! Enable the ECL-blackoil extension for particles
+template<class TypeTag, class MyTypeTag>
+struct EnableParticle { using type = UndefinedProperty; };
+
 template<class TypeTag, class MyTypeTag>
 struct EnableMech { using type = UndefinedProperty; };
 

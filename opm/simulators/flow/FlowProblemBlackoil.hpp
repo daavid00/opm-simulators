@@ -114,6 +114,7 @@ private:
     using FlowProblemType::enableExtbo;
     using FlowProblemType::enableFoam;
     using FlowProblemType::enableMICP;
+    using FlowProblemType::enableParticle;
     using FlowProblemType::enablePolymer;
     using FlowProblemType::enablePolymerMolarWeight;
     using FlowProblemType::enableSaltPrecipitation;
@@ -147,6 +148,7 @@ private:
 
     using BioeffectsModule = BlackOilBioeffectsModule<TypeTag, enableBioeffects>;
     using BrineModule = BlackOilBrineModule<TypeTag, enableBrine>;
+    using ParticleModule = BlackOilParticleModule<TypeTag, enableParticle>;
     using ConvectiveMixingModule = BlackOilConvectiveMixingModule<TypeTag, enableConvectiveMixing>;
     using DiffusionModule = BlackOilDiffusionModule<TypeTag, enableDiffusion>;
     using DispersionModule = BlackOilDispersionModule<TypeTag, enableDispersion>;
@@ -234,6 +236,12 @@ public:
             BlackOilBioeffectsParams<Scalar> bioeffectsParams;
             bioeffectsParams.template initFromState<enableBioeffects, enableMICP>(vanguard.eclState());
             BioeffectsModule::setParams(std::move(bioeffectsParams));
+        }
+
+        if constexpr (enableParticle) {
+            BlackOilParticleParams<Scalar> particleParams;
+            particleParams.template initFromState<enableParticle>(vanguard.eclState());
+            ParticleModule::setParams(std::move(particleParams));
         }
 
         if constexpr (enablePolymer) {
@@ -692,6 +700,9 @@ public:
                 rate[Indices::oxygenConcentrationIdx] += source.rate(ijk, SourceComponent::OXYG) / this->model().dofTotalVolume(globalDofIdx);
                 rate[Indices::ureaConcentrationIdx] += source.rate(ijk, SourceComponent::UREA) / (this->model().dofTotalVolume(globalDofIdx));
             }
+            if constexpr (enableParticle) {
+                rate[Indices::particleConcentrationIdx] += source.rate(ijk, SourceComponent::PARTICLE) / this->model().dofTotalVolume(globalDofIdx);
+            }
             if constexpr (energyModuleType == EnergyModules::FullyImplicitThermal) {
                 for (unsigned i = 0; i < phidx_map.size(); ++i) {
                     const auto phaseIdx = phidx_map[i];
@@ -766,6 +777,9 @@ public:
         else if constexpr (enableBioeffects) {
             return obtain(intQuants.permFactor());
         }
+        else if constexpr (enableParticle) {
+            return obtain(intQuants.permFactor());
+        }
         else {
             return 1.0;
         }
@@ -833,6 +847,7 @@ public:
                     case BCComponent::MICR:
                     case BCComponent::OXYG:
                     case BCComponent::UREA:
+                    case BCComponent::PARTICLE:
                     case BCComponent::NONE:
                         throw std::logic_error("you need to specify a valid component (OIL, WATER or GAS) when DIRICHLET type is set in BC");
                 }
@@ -1005,6 +1020,11 @@ public:
             }
         }
 
+        if constexpr (enableParticle) {
+            values[Indices::particleConcentrationIdx] = this->particleConcentration_[globalDofIdx];
+            values[Indices::particleVolumeFractionIdx]= this->particleVolumeFraction_[globalDofIdx];
+        }
+
         values.checkDefined();
     }
 
@@ -1094,6 +1114,11 @@ public:
             this->bioeffects_.resize(numElems);
         }
 
+        if constexpr (enableParticle) {
+            this->particleConcentration_.resize(numElems, 0.0);
+            this->particleVolumeFraction_.resize(numElems, 0.0);
+        }
+
         // Initialize mixing controls before trying to set any lastRx valuesx
         this->mixControls_.init(numElems, restart_step, eclState.runspec().tabdims().getNumPVTTables());
 
@@ -1136,6 +1161,11 @@ public:
             }
 
             this->mixControls_.updateLastValues(elemIdx, elemFluidState.Rs(), elemFluidState.Rv());
+
+            if constexpr (enableParticle) {
+                this->particleConcentration_[elemIdx] = this->eclWriter_->outputModule().getParticleConcentration(elemIdx);
+                this->particleVolumeFraction_[elemIdx] = this->eclWriter_->outputModule().getParticleVolumeFraction(elemIdx);
+            }
 
             if constexpr (enablePolymer)
                 this->polymer_.concentration[elemIdx] = this->eclWriter_->outputModule().getPolymerConcentration(elemIdx);
@@ -1595,13 +1625,14 @@ protected:
     {
         FlowProblemType::readInitialCondition_();
 
-        if constexpr (enableSolvent || enablePolymer || enablePolymerMolarWeight || enableBioeffects)
+        if constexpr (enableSolvent || enablePolymer || enablePolymerMolarWeight || enableBioeffects || enableParticle)
             this->readBlackoilExtentionsInitialConditions_(this->model().numGridDof(),
                                                            enableSolvent,
                                                            enablePolymer,
                                                            enablePolymerMolarWeight,
                                                            enableBioeffects,
-                                                           enableMICP);
+                                                           enableMICP,
+                                                           enableParticle);
 
     }
 
@@ -1645,6 +1676,14 @@ protected:
         rate[Indices::ureaConcentrationIdx] = bc.rate;
         // since the urea concentration can be much larger than 1, then we apply a scaling factor
         rate[Indices::ureaConcentrationIdx] *= getPropValue<TypeTag, Properties::BlackOilUreaScalingFactor>();
+    }
+
+    void handleParticleBC(const BCProp::BCFace& bc, RateVector& rate) const override
+    {
+        if constexpr (!enableParticle)
+            throw std::logic_error("Particle is disabled and you're trying to add particle to BC");
+
+        rate[Indices::particleConcentrationIdx] = bc.rate;
     }
 
     void updateExplicitQuantities_(const bool first_step_after_restart)

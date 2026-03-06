@@ -129,6 +129,7 @@ public:
     static constexpr bool has_disgas_in_water = getPropValue<TypeTag, Properties::EnableDisgasInWater>();
     static constexpr bool has_saltPrecip = getPropValue<TypeTag, Properties::EnableSaltPrecipitation>();
     static constexpr bool has_bioeffects = getPropValue<TypeTag, Properties::EnableBioeffects>();
+    static constexpr bool has_particle = getPropValue<TypeTag, Properties::EnableParticle>();
     static constexpr bool has_micp = Indices::enableMICP;
 
     template<class ValueType>
@@ -412,6 +413,7 @@ protected:
     Scalar wmicrobes() const;
     Scalar woxygen() const;
     Scalar wurea() const;
+    Scalar wparticle() const;
 
     virtual Scalar getRefDensity() const = 0;
 
