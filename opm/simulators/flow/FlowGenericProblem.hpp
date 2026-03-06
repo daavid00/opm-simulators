@@ -194,6 +194,16 @@ public:
     Scalar polymerMolecularWeight(const unsigned elemIdx) const;
 
     /*!
+     * \brief Returns the initial particle concentration for a given a cell index
+     */
+    Scalar particleConcentration(unsigned elemIdx) const;
+
+    /*!
+     * \brief Returns the initial particle volume fraction for a given a cell index
+     */
+    Scalar particleVolumeFraction(unsigned elemIdx) const;
+
+    /*!
      * \brief Returns the initial microbial concentration for a given a cell index
      */
     Scalar microbialConcentration(unsigned elemIdx) const;
@@ -283,6 +293,8 @@ public:
         serializer(solventSaturation_);
         serializer(solventRsw_);
         serializer(bioeffects_);
+        serializer(particleConcentration_);
+        serializer(particleVolumeFraction_);
     }
 
 protected:
@@ -322,7 +334,8 @@ protected:
                                                   bool enablePolymer,
                                                   bool enablePolymerMolarWeight,
                                                   bool enableBioeffects,
-                                                  bool enableMICP);
+                                                  bool enableMICP,
+                                                  bool enableParticle);
 
     void updatePvtnum_();
     void updateSatnum_();
@@ -357,6 +370,8 @@ protected:
     std::vector<Scalar> overburdenPressure_;
     std::vector<Scalar> solventSaturation_;
     std::vector<Scalar> solventRsw_;
+    std::vector<Scalar> particleConcentration_;
+    std::vector<Scalar> particleVolumeFraction_;
     BioeffectsSolutionContainer<Scalar> bioeffects_;
     CO2H2SolutionContainer<Scalar> CO2H2_;
 

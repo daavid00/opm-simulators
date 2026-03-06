@@ -228,7 +228,8 @@ class TpfaLinearizer
     static constexpr bool enableFullyImplicitThermal = (getPropValue<TypeTag, Properties::EnergyModuleType>() == EnergyModules::FullyImplicitThermal);
     static constexpr bool enableDiffusion = getPropValue<TypeTag, Properties::EnableDiffusion>();
     static constexpr bool enableDispersion = getPropValue<TypeTag, Properties::EnableDispersion>();
-    static const bool enableBioeffects = getPropValue<TypeTag, Properties::EnableBioeffects>();
+    static constexpr bool enableBioeffects = getPropValue<TypeTag, Properties::EnableBioeffects>();
+    static constexpr bool enableParticle = getPropValue<TypeTag, Properties::EnableParticle>();
 
     // copying the linearizer is not a good idea
     TpfaLinearizer(const TpfaLinearizer&) = delete;
@@ -684,7 +685,7 @@ private:
         const bool isTemp = simulator_().vanguard().eclState().getSimulationConfig().isTemp();
         const bool anyFlores = simulator_().problem().eclWriter().outputModule().getFlows().anyFlores() || isTemp;
         const bool dispersionActive = simulator_().vanguard().eclState().getSimulationConfig().rock_config().dispersion();
-        if (!dispersionActive && !enableBioeffects && blockVelocity.empty()
+        if (!dispersionActive && !enableBioeffects && !enableParticle && blockVelocity.empty()
             && !((anyFlows || !blockFlows.empty()) && flowsInfo_.empty())
             && !(anyFlores && floresInfo_.empty())) {
             return;
@@ -715,7 +716,7 @@ private:
         if (anyFlores) {
             floresInfo_.reserve(numCells, 6 * numCells);
         }
-        if (dispersionActive || enableBioeffects) {
+        if (dispersionActive || enableBioeffects || enableParticle) {
             velocityInfo_.reserve(numCells, 6 * numCells);
         }
         else if (!blockVelocity.empty()) {
@@ -735,12 +736,12 @@ private:
                     }
                     else {
                         flowsInfo_.appendRow(loc_flinfo.begin(), loc_flinfo.begin());
-                        if (!dispersionActive && !enableBioeffects && !anyFlores && blockVelocity.empty()) {
+                        if (!dispersionActive && !enableBioeffects && !enableParticle && !anyFlores && blockVelocity.empty()) {
                             continue;
                         }
                     }
                 }
-                if (!blockVelocity.empty() && !(dispersionActive || enableBioeffects)) {
+                if (!blockVelocity.empty() && !(dispersionActive || enableBioeffects || enableParticle)) {
                     if (std::ranges::binary_search(blockVelocity,
                                                    simulator_().vanguard().cartesianIndex(myIdx))) {
                         blockVelocityFound = true;
@@ -790,7 +791,7 @@ private:
                 if (anyFlores) {
                     floresInfo_.appendRow(loc_flinfo.begin(), loc_flinfo.end());
                 }
-                if (dispersionActive || enableBioeffects || blockVelocityFound) {
+                if (dispersionActive || enableBioeffects || enableParticle || blockVelocityFound) {
                     velocityInfo_.appendRow(loc_vlinfo.begin(), loc_vlinfo.end());
                 }
             }
@@ -949,7 +950,7 @@ private:
                     LocalResidual::computeFlux(adres, darcyFlux, globI, globJ, intQuantsIn, intQuantsEx,
                                                nbInfo.res_nbinfo, problem_().moduleParams());
                     adres *= nbInfo.res_nbinfo.faceArea;
-                    if (dispersionActive || enableBioeffects) {
+                    if (dispersionActive || enableBioeffects || enableParticle) {
                         for (unsigned phaseIdx = 0; phaseIdx < numEq; ++phaseIdx) {
                             velocityInfo_[globI][loc].velocity[phaseIdx] =
                                 darcyFlux[phaseIdx].value() / nbInfo.res_nbinfo.faceArea;

@@ -117,6 +117,7 @@ class OutputBlackOilModule : public GenericOutputBlackoilModule<GetPropType<Type
     static constexpr EnergyModules energyModuleType = getPropValue<TypeTag, Properties::EnergyModuleType>();
     enum { enableBioeffects = getPropValue<TypeTag, Properties::EnableBioeffects>() };
     enum { enableMICP = Indices::enableMICP };
+    enum { enableParticle = getPropValue<TypeTag, Properties::EnableParticle>() };
     enum { enableVapwat = getPropValue<TypeTag, Properties::EnableVapwat>() };
     enum { enableDisgasInWater = getPropValue<TypeTag, Properties::EnableDisgasInWater>() };
     enum { enableDissolvedGas = Indices::compositionSwitchIdx >= 0 };
@@ -155,7 +156,8 @@ public:
                    getPropValue<TypeTag, Properties::EnableSaltPrecipitation>(),
                    getPropValue<TypeTag, Properties::EnableExtbo>(),
                    getPropValue<TypeTag, Properties::EnableBioeffects>(),
-                   getPropValue<TypeTag, Properties::EnableGeochemistry>())
+                   getPropValue<TypeTag, Properties::EnableGeochemistry>(),
+                   getPropValue<TypeTag, Properties::EnableParticle>())
         , simulator_(simulator)
         , collectOnIORank_(collectOnIORank)
     {
@@ -973,6 +975,17 @@ private:
             }
         }
 
+         if constexpr(enableParticle) {
+            const auto surfVolWat = pv * getValue(fs.saturation(waterPhaseIdx)) *
+                                         getValue(fs.invB(waterPhaseIdx));
+            if (this->fipC_.hasRetainedParticleMass()) {
+                this->updateRetainedParticleMass(globalDofIdx, intQuants, totVolume);
+            }
+            if (this->fipC_.hasSuspendedParticleMass()) {
+                this->updateSuspendedParticleMass(globalDofIdx, intQuants, surfVolWat);
+            }
+        }
+
         if (this->fipC_.hasWaterMass() && FluidSystem::phaseIsActive(waterPhaseIdx))
         {
             this->updateWaterMass(globalDofIdx, fs, fip);
@@ -1104,6 +1117,26 @@ private:
         const Scalar rhoW = FluidSystem::referenceDensity(waterPhaseIdx, fs.pvtRegionIndex());
 
         this->fipC_.assignWaterMass(globalDofIdx, fip, rhoW);
+    }
+
+    template <typename IntensiveQuantities>
+    void updateSuspendedParticleMass(const unsigned             globalDofIdx,
+                                     const IntensiveQuantities& intQuants,
+                                     const double               surfVolWat)
+    {
+        const Scalar mass = surfVolWat * intQuants.particleConcentration().value();
+
+        this->fipC_.assignSuspendedParticleMass(globalDofIdx, mass);
+    }
+
+    template <typename IntensiveQuantities>
+    void updateRetainedParticleMass(const unsigned             globalDofIdx,
+                                    const IntensiveQuantities& intQuants,
+                                    const double               totVolume)
+    {
+        const Scalar mass = totVolume * intQuants.particleRetainedMass().value();
+
+        this->fipC_.assignRetainedParticleMass(globalDofIdx, mass);
     }
 
     template <typename IntensiveQuantities>
@@ -1316,6 +1349,16 @@ private:
             Entry{ScalarEntry{&this->permFact_,
                               [](const Context& ectx)
                               { return getValue(ectx.intQuants.permFactor()); }
+                  }
+            },
+            Entry{ScalarEntry{&this->rParticle_,
+                              [](const Context& ectx)
+                              { return getValue(ectx.intQuants.particleVolumeFraction()); }
+                  }
+            },
+            Entry{ScalarEntry{&this->sParticle_,
+                              [](const Context& ectx)
+                              { return getValue(ectx.intQuants.particleConcentration()); }
                   }
             },
             Entry{ScalarEntry{&this->rPorV_,
@@ -2607,6 +2650,24 @@ private:
                                          rhoW *
                                          model.dofTotalVolume(ectx.globalDofIdx) *
                                          getValue(ectx.intQuants.porosity());
+                              }
+                  }
+            },
+            Entry{ScalarEntry{"BRPIP",
+                              [&model = this->simulator_.model()](const Context& ectx)
+                              {
+                                  return model.dofTotalVolume(ectx.globalDofIdx) *
+                                         getValue(ectx.intQuants.particleRetainedMass());
+                              }
+                  }
+            },
+            Entry{ScalarEntry{"BSPIP",
+                              [&model = this->simulator_.model()](const Context& ectx)
+                              {
+                                  return getValue(ectx.intQuants.particleConcentration()) *
+                                         getValue(ectx.fs.saturation(waterPhaseIdx)) *
+                                         getValue(ectx.intQuants.porosity()) *
+                                         model.dofTotalVolume(ectx.globalDofIdx);
                               }
                   }
             },

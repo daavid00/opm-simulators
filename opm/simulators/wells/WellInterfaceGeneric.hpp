@@ -220,6 +220,7 @@ protected:
     Scalar wpolymer_() const;
     Scalar wsalt_() const;
     Scalar wurea_() const;
+    Scalar wparticle_() const;
 
     int polymerTable_() const;
     int polymerInjTable_() const;

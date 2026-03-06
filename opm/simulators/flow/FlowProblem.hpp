@@ -133,6 +133,7 @@ protected:
     enum { enableSaltPrecipitation = getPropValue<TypeTag, Properties::EnableSaltPrecipitation>() };
     enum { enableSolvent = getPropValue<TypeTag, Properties::EnableSolvent>() };
     enum { enableThermalFluxBoundaries = getPropValue<TypeTag, Properties::EnableThermalFluxBoundaries>() };
+    enum { enableParticle = getPropValue<TypeTag, Properties::EnableParticle>() };
 
     enum { gasPhaseIdx = FluidSystem::gasPhaseIdx };
     enum { oilPhaseIdx = FluidSystem::oilPhaseIdx };
@@ -1238,6 +1239,9 @@ public:
         case BCComponent::UREA:
             this->handleUreaBC(bc, rate);
             break;
+        case BCComponent::PARTICLE:
+            this->handleParticleBC(bc, rate);
+            break;
         case BCComponent::NONE:
             throw std::logic_error("you need to specify the component when RATE type is set in BC");
             break;
@@ -1853,6 +1857,8 @@ protected:
     virtual void handleOxygBC(const BCProp::BCFace&, RateVector&) const = 0;
 
     virtual void handleUreaBC(const BCProp::BCFace&, RateVector&) const = 0;
+
+    virtual void handleParticleBC(const BCProp::BCFace&, RateVector&) const = 0;
 
     BCData<int> bcindex_;
     bool nonTrivialBoundaryConditions_ = false;

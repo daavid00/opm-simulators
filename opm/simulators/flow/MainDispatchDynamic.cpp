@@ -57,6 +57,7 @@
 #include <flow/flow_onephase.hpp>
 #include <flow/flow_onephase_energy.hpp>
 #include <flow/flow_onephase_tpsa.hpp>
+#include <flow/flow_particle.hpp>
 #include <flow/flow_polymer.hpp>
 #include <flow/flow_solvent.hpp>
 #include <flow/flow_solvent_foam.hpp>
@@ -85,6 +86,11 @@ int Opm::Main::dispatchDynamic_()
     // Single-phase case
     if (rspec.micp()) {
         return this->runMICP(phases);
+    }
+
+    // water-only case with particles
+    else if (phases.size() == 1 && phases.active(Phase::WATER) && rspec.particle()) {
+        return this->runParticle();
     }
 
     // water-only case
@@ -325,6 +331,11 @@ int Opm::Main::runWaterOnlyEnergy(const Phases& phases)
     }
 
     return flowWaterOnlyEnergyMain(argc_, argv_, outputCout_, outputFiles_);
+}
+
+int Opm::Main::runParticle()
+{
+    return flowParticleMain(argc_, argv_, outputCout_, outputFiles_);
 }
 
 int Opm::Main::runBrine(const Phases& phases)

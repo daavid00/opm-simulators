@@ -80,6 +80,7 @@ public:
         serializer(connFracStatistics);
         serializer(gas_mass_rates);
         serializer(wat_mass_rates);
+        serializer(particle_rates);
     }
 
     bool operator==(const PerfData&) const;
@@ -109,6 +110,7 @@ public:
     std::vector<std::size_t> ecl_index{};
     std::vector<Scalar> gas_mass_rates{};
     std::vector<Scalar> wat_mass_rates{};
+    std::vector<Scalar> particle_rates{};
 
     // The water_throughput, skin_pressure and water_velocity variables are
     // only used for injectors to check the injectivity.

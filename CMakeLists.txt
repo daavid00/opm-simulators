@@ -719,6 +719,7 @@ macro(opm-simulators_targets_hook)
     onephase
     onephase_energy
     onephase_tpsa
+    particle
     polymer
     solvent
     solvent_foam

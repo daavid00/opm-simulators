@@ -31,6 +31,7 @@
 #include <opm/input/eclipse/Schedule/Well/WellConnections.hpp>
 #include <opm/input/eclipse/Schedule/Well/WellFoamProperties.hpp>
 #include <opm/input/eclipse/Schedule/Well/WellMICPProperties.hpp>
+#include <opm/input/eclipse/Schedule/Well/WellParticleProperties.hpp>
 #include <opm/input/eclipse/Schedule/Well/WellPolymerProperties.hpp>
 #include <opm/input/eclipse/Schedule/Well/WellTestState.hpp>
 #include <opm/input/eclipse/Schedule/Well/WVFPEXP.hpp>
@@ -730,6 +731,22 @@ WellInterfaceGeneric<Scalar, IndexTraits>::wmicrobes_() const
         return microbial_injection_concentration;
     } else {
         // Not a water injection well => no microbes.
+        return 0.0;
+    }
+}
+
+template<typename Scalar, typename IndexTraits>
+Scalar
+WellInterfaceGeneric<Scalar, IndexTraits>::wparticle_() const
+{
+    auto injectorType = this->well_ecl_.injectorType();
+
+    if (injectorType == InjectorType::WATER) {
+        WellParticleProperties particle = this->well_ecl_.getParticleProperties();
+        const Scalar particle_injection_concentration = particle.m_particleConcentration;
+        return particle_injection_concentration;
+    } else {
+        // Not a water injection well => no particle.
         return 0.0;
     }
 }
