@@ -89,6 +89,11 @@ ComponentName<FluidSystem,Indices>::ComponentName()
         names_[Indices::microbialConcentrationIdx] = "Microbes";
         names_[Indices::biofilmVolumeFractionIdx] = "Biofilm";
     }
+
+    if constexpr (Indices::enableParticle) {
+        names_[Indices::particleConcentrationIdx] = "SuspendedParticle";
+        names_[Indices::particleVolumeFractionIdx] = "RetainedParticle";
+    }
 }
 
 

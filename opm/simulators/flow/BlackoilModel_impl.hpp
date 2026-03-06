@@ -1383,6 +1383,19 @@ getMaxCoeff(const unsigned cell_idx,
                                                 std::abs(R5) / pvValue);
             }
     }
+
+    if constexpr (has_particle_) {
+        B_avg[contiSuspendedParticleEqIdx] += 1.0 / fs.invB(FluidSystem::waterPhaseIdx).value();
+        const auto R1 = modelResid[cell_idx][contiSuspendedParticleEqIdx];
+        R_sum[contiSuspendedParticleEqIdx] += R1;
+        maxCoeff[contiSuspendedParticleEqIdx] = std::max(maxCoeff[contiSuspendedParticleEqIdx],
+                                                std::abs(R1) / pvValue);
+        B_avg[contiRetainedParticleEqIdx] += 1.0 / fs.invB(FluidSystem::waterPhaseIdx).value();
+        const auto R2 = modelResid[cell_idx][contiRetainedParticleEqIdx];
+        R_sum[contiRetainedParticleEqIdx] += R2;
+        maxCoeff[contiRetainedParticleEqIdx] = std::max(maxCoeff[contiRetainedParticleEqIdx],
+                                               std::abs(R2) / pvValue);
+        }
 }
 
 } // namespace Opm

@@ -46,6 +46,7 @@
 #include <opm/models/blackoil/blackoilintensivequantities.hh>
 #include <opm/models/blackoil/blackoillocalresidual.hh>
 #include <opm/models/blackoil/blackoilnewtonmethod.hpp>
+#include <opm/models/blackoil/blackoilparticlemodules.hh>
 #include <opm/models/blackoil/blackoilpolymermodules.hh>
 #include <opm/models/blackoil/blackoilprimaryvariables.hh>
 #include <opm/models/blackoil/blackoilproblem.hh>
@@ -200,6 +201,10 @@ struct EnableSaltPrecipitation<TypeTag, TTag::BlackOilModel>
 
 template<class TypeTag>
 struct EnableBioeffects<TypeTag, TTag::BlackOilModel>
+{ static constexpr bool value = false; };
+
+template<class TypeTag>
+struct EnableParticle<TypeTag, TTag::BlackOilModel>
 { static constexpr bool value = false; };
 
 template<class TypeTag>
@@ -363,6 +368,7 @@ private:
     using DiffusionModule = BlackOilDiffusionModule<TypeTag, enableDiffusion>;
     using DispersionModule = BlackOilDispersionModule<TypeTag, enableDispersion>;
     using BioeffectsModule = BlackOilBioeffectsModule<TypeTag>;
+    using ParticleModule = BlackOilParticleModule<TypeTag>;
 
 public:
     using LocalResidual = GetPropType<TypeTag, Properties::LocalResidual>;
@@ -386,6 +392,7 @@ public:
         EnergyModule::registerParameters();
         DiffusionModule::registerParameters();
         BioeffectsModule::registerParameters();
+        ParticleModule::registerParameters();
 
         // register runtime parameters of the VTK output modules
         VtkBlackOilModule<TypeTag>::registerParameters();
@@ -675,6 +682,7 @@ protected:
         PolymerModule::registerOutputModules(asImp_(), this->simulator_);
         EnergyModule::registerOutputModules(asImp_(), this->simulator_);
         BioeffectsModule::registerOutputModules(asImp_(), this->simulator_);
+        ParticleModule::registerOutputModules(asImp_(), this->simulator_);
 
         this->addOutputModule(std::make_unique<VtkBlackOilModule<TypeTag>>(this->simulator_));
         this->addOutputModule(std::make_unique<VtkCompositionModule<TypeTag>>(this->simulator_));

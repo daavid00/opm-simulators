@@ -671,6 +671,7 @@ macro(opm-simulators_targets_hook)
     oilwater_polymer_injectivity
     onephase
     onephase_energy
+    particle
     polymer
     solvent
     solvent_foam
