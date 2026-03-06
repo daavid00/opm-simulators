@@ -73,7 +73,10 @@ class BlackOilNewtonMethod : public GetPropType<TypeTag, Properties::DiscNewtonM
     using Scalar = GetPropType<TypeTag, Properties::Scalar>;
     using Linearizer = GetPropType<TypeTag, Properties::Linearizer>;
     static constexpr bool enableBioeffects = getPropValue<TypeTag, Properties::EnableBioeffects>();
+    static constexpr bool enableParticle = getPropValue<TypeTag, Properties::EnableParticle>();
+    
     using BioeffectsModule = BlackOilBioeffectsModule<TypeTag, enableBioeffects>;
+    using ParticleModule = BlackOilParticleModule<TypeTag, enableParticle>;
 
     static const unsigned numEq = getPropValue<TypeTag, Properties::NumEq>();
     static constexpr bool enableSaltPrecipitation = getPropValue<TypeTag, Properties::EnableSaltPrecipitation>();
@@ -429,6 +432,17 @@ protected:
                         nextValue[pvIdx] = std::clamp(nextValue[pvIdx], Scalar{0.0},
                                                                         this->problem().referencePorosity(globalDofIdx, 0) - 1e-8);
                     }
+                }
+            }
+
+            if constexpr (enableParticle) {
+                if (pvIdx == Indices::particleConcentrationIdx) {
+                    nextValue[pvIdx] = std::max(nextValue[pvIdx], Scalar{0.0});
+                }
+                if (pvIdx == Indices::particleVolumeFractionIdx) {
+                    nextValue[pvIdx] = std::clamp(nextValue[pvIdx],
+                                                  Scalar{0.0},
+                                                  this->problem().referencePorosity(globalDofIdx, 0) - 1e-8);
                 }
             }
         }

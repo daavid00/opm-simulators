@@ -94,6 +94,8 @@ public:
     static constexpr int contiUreaEqIdx = Indices::contiUreaEqIdx;
     static constexpr int contiBiofilmEqIdx = Indices::contiBiofilmEqIdx;
     static constexpr int contiCalciteEqIdx = Indices::contiCalciteEqIdx;
+    static constexpr unsigned contiSuspendedParticleEqIdx = Indices::contiSuspendedParticleEqIdx;
+    static constexpr unsigned contiRetainedParticleEqIdx = Indices::contiRetainedParticleEqIdx;
     static constexpr unsigned solventSaturationIdx = Indices::solventSaturationIdx;
     static constexpr unsigned zFractionIdx = Indices::zFractionIdx;
     static constexpr unsigned polymerConcentrationIdx = Indices::polymerConcentrationIdx;
@@ -106,6 +108,8 @@ public:
     static constexpr unsigned ureaConcentrationIdx = Indices::ureaConcentrationIdx;
     static constexpr unsigned biofilmVolumeFractionIdx = Indices::biofilmVolumeFractionIdx;
     static constexpr unsigned calciteVolumeFractionIdx = Indices::calciteVolumeFractionIdx;
+    static constexpr unsigned particleConcentrationIdx = Indices::particleConcentrationIdx;
+    static constexpr unsigned particleVolumeFractionIdx = Indices::particleVolumeFractionIdx;
 
     using VectorBlockType = Dune::FieldVector<Scalar, numEq>;
     using MatrixBlockType = typename SparseMatrixAdapter::MatrixBlock;
@@ -296,6 +300,7 @@ protected:
     static constexpr bool has_foam_ = getPropValue<TypeTag, Properties::EnableFoam>();
     static constexpr bool has_brine_ = getPropValue<TypeTag, Properties::EnableBrine>();
     static constexpr bool has_bioeffects_ = getPropValue<TypeTag, Properties::EnableBioeffects>();
+    static constexpr bool has_particle_ = getPropValue<TypeTag, Properties::EnableParticle>();
     static constexpr bool has_micp_ = Indices::enableMICP;
 
     /// \brief The number of cells of the global grid.

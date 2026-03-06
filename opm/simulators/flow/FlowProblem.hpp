@@ -124,6 +124,7 @@ protected:
     static constexpr bool enableDispersion = getPropValue<TypeTag, Properties::EnableDispersion>();
     static constexpr bool enableExtbo = getPropValue<TypeTag, Properties::EnableExtbo>();
     static constexpr bool enableFoam = getPropValue<TypeTag, Properties::EnableFoam>();
+    static constexpr bool enableParticle = getPropValue<TypeTag, Properties::EnableParticle>();
     static constexpr bool enablePolymer = getPropValue<TypeTag, Properties::EnablePolymer>();
     static constexpr bool enablePolymerMolarWeight = getPropValue<TypeTag, Properties::EnablePolymerMW>();
     static constexpr bool enableSolvent = getPropValue<TypeTag, Properties::EnableSolvent>();
@@ -1266,6 +1267,9 @@ public:
         case BCComponent::UREA:
             this->handleUreaBC(bc, rate);
             break;
+        case BCComponent::PARTICLE:
+            this->handleParticleBC(bc, rate);
+            break;
         case BCComponent::NONE:
             throw std::logic_error("you need to specify the component when RATE type is set in BC");
             break;
@@ -1880,6 +1884,8 @@ protected:
     virtual void handleOxygBC(const BCProp::BCFace&, RateVector&) const = 0;
 
     virtual void handleUreaBC(const BCProp::BCFace&, RateVector&) const = 0;
+
+    virtual void handleParticleBC(const BCProp::BCFace&, RateVector&) const = 0;
 
     BCData<int> bcindex_;
     bool nonTrivialBoundaryConditions_ = false;

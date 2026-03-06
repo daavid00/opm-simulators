@@ -83,6 +83,9 @@ public:
 
     //! MICP implementation is an extension of the black-oil model
     static constexpr bool enableMICP = false;
+
+    //! Particle implementation is an extension of the black-oil model
+    static constexpr bool enableParticle = false;
 };
 
 } // namespace Opm

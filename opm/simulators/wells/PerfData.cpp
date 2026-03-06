@@ -54,6 +54,7 @@ PerfData<Scalar>::PerfData(const std::size_t num_perf,
     , global_index(num_perf)
     , gas_mass_rates(num_perf)
     , wat_mass_rates(num_perf)
+    , particle_rates(num_perf)
 {
     if (injector) {
         prepareInjectorContainers();
@@ -106,6 +107,7 @@ PerfData<Scalar> PerfData<Scalar>::serializationTestObject()
     result.connFracStatistics.assign(3, ConnFracStatistics<Scalar>::serializationTestObject());
     result.gas_mass_rates = {31.0};
     result.wat_mass_rates = {32.0};
+    result.particle_rates = {33.0};
 
     return result;
 }
@@ -153,6 +155,7 @@ bool PerfData<Scalar>::try_assign(const PerfData& other)
     this->connFracStatistics = other.connFracStatistics;
     this->gas_mass_rates = other.gas_mass_rates;
     this->wat_mass_rates = other.wat_mass_rates;
+    this->particle_rates = other.particle_rates;
 
     return true;
 }
@@ -189,6 +192,7 @@ bool PerfData<Scalar>::operator==(const PerfData& rhs) const
         && (this->connFracStatistics == rhs.connFracStatistics)
         && (this->gas_mass_rates == rhs.gas_mass_rates)
         && (this->wat_mass_rates == rhs.wat_mass_rates)
+        && (this->particle_rates == rhs.particle_rates)
         ;
 }
 

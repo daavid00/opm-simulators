@@ -71,6 +71,9 @@ struct BlackOilTwoPhaseIndices
     //! MICP only available for one phase indices
     static constexpr bool enableMICP = false;
 
+    //! Particles only available for one phase indices
+    static constexpr bool enableParticle = false;
+
     //! Are biofilms involved?
     static constexpr bool enableBiofilm = numBioCompV > 0;
 
@@ -179,6 +182,10 @@ struct BlackOilTwoPhaseIndices
     static constexpr unsigned ureaConcentrationIdx = std::numeric_limits<unsigned>::max();
     static constexpr unsigned calciteVolumeFractionIdx = std::numeric_limits<unsigned>::max();
 
+    //! No particles for three phase indices
+    static constexpr unsigned particleConcentrationIdx = std::numeric_limits<unsigned>::max();
+    static constexpr unsigned particleVolumeFractionIdx = std::numeric_limits<unsigned>::max();
+
     //! Index of the primary variable for the foam
     static constexpr unsigned foamConcentrationIdx =
         enableFoam ? PVOffset + numPhases + numSolvents + numPolymers + numBioComp
@@ -231,6 +238,10 @@ struct BlackOilTwoPhaseIndices
     static constexpr int contiOxygenEqIdx = -1000;
     static constexpr int contiUreaEqIdx = -1000;
     static constexpr int contiCalciteEqIdx = -1000;
+
+    //! No bioeffects for three phase indices
+    static constexpr int contiSuspendedParticleEqIdx = -1000;
+    static constexpr int contiRetainedParticleEqIdx = -1000;
 
     //! Index of the continuity equation for the foam component
     static constexpr int contiFoamEqIdx =
