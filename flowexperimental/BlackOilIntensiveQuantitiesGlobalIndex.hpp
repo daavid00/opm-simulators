@@ -43,6 +43,7 @@
 #include <opm/models/blackoil/blackoilmodules.hpp>
 #include <opm/models/blackoil/blackoilproperties.hh>
 #include <opm/models/blackoil/blackoilconvectivemixingmodule.hh>
+#include <opm/models/blackoil/blackoilparticlemodules.hh>
 #include <opm/models/common/directionalmobility.hh>
 
 #include <opm/utility/CopyablePtr.hpp>
@@ -73,6 +74,7 @@ class BlackOilIntensiveQuantitiesGlobalIndex
     , public BlackOilBrineIntensiveQuantities<TypeTag, getPropValue<TypeTag, Properties::EnableBrine>()>
     , public BlackOilEnergyIntensiveQuantitiesGlobalIndex<TypeTag, getPropValue<TypeTag, Properties::EnergyModuleType>()>
     , public BlackOilBioeffectsIntensiveQuantities<TypeTag, getPropValue<TypeTag, Properties::EnableBioeffects>()>
+    , public BlackOilParticleIntensiveQuantities<TypeTag, getPropValue<TypeTag, Properties::EnableParticle>()>
     , public BlackOilConvectiveMixingIntensiveQuantities<TypeTag, getPropValue<TypeTag, Properties::EnableConvectiveMixing>()>
 {
     using ParentType = GetPropType<TypeTag, Properties::DiscIntensiveQuantities>;
@@ -100,6 +102,7 @@ class BlackOilIntensiveQuantitiesGlobalIndex
     enum { enableDiffusion = getPropValue<TypeTag, Properties::EnableDiffusion>() };
     enum { enableConvectiveMixing = getPropValue<TypeTag, Properties::EnableConvectiveMixing>() };
     enum { enableBioeffects = getPropValue<TypeTag, Properties::EnableBioeffects>() };
+    enum { enableParticle = getPropValue<TypeTag, Properties::EnableParticle>() };
     enum { numPhases = getPropValue<TypeTag, Properties::NumPhases>() };
     enum { numComponents = getPropValue<TypeTag, Properties::NumComponents>() };
     enum { waterCompIdx = FluidSystem::waterCompIdx };
@@ -542,6 +545,7 @@ private:
     friend BlackOilFoamIntensiveQuantities<TypeTag, enableFoam>;
     friend BlackOilBrineIntensiveQuantities<TypeTag, enableBrine>;
     friend BlackOilBioeffectsIntensiveQuantities<TypeTag, enableBioeffects>;
+    friend BlackOilParticleIntensiveQuantities<TypeTag, enableParticle>;
 
     Implementation& asImp_()
     { return *static_cast<Implementation*>(this); }

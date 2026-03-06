@@ -111,6 +111,7 @@ class BlackOilPrimaryVariables : public FvBasePrimaryVariables<TypeTag, VectorTy
     static constexpr bool enableExtbo = getPropValue<TypeTag, Properties::EnableExtbo>();
     static constexpr bool enableFoam = getPropValue<TypeTag, Properties::EnableFoam>();
     static constexpr bool enableFullyImplicitThermal = energyModuleType == EnergyModules::FullyImplicitThermal;
+    static constexpr bool enableParticle = getPropValue<TypeTag, Properties::EnableParticle>();
     static constexpr bool enablePolymer = getPropValue<TypeTag, Properties::EnablePolymer>();
     static constexpr bool enableSolvent = getPropValue<TypeTag, Properties::EnableSolvent>();
 
@@ -128,6 +129,7 @@ class BlackOilPrimaryVariables : public FvBasePrimaryVariables<TypeTag, VectorTy
     using EnergyModule = BlackOilEnergyModule<TypeTag, energyModuleType>;
     using BrineModule = BlackOilBrineModule<TypeTag, enableBrine>;
     using BioeffectsModule = BlackOilBioeffectsModule<TypeTag, enableBioeffects>;
+    using ParticleModule = BlackOilParticleModule<TypeTag, enableParticle>;
 
     static_assert(numPhases == 3, "The black-oil model assumes three phases!");
     static_assert(numComponents == 3, "The black-oil model assumes three components!");

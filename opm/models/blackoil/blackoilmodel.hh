@@ -199,6 +199,10 @@ struct EnableBioeffects<TypeTag, TTag::BlackOilModel>
 { static constexpr bool value = false; };
 
 template<class TypeTag>
+struct EnableParticle<TypeTag, TTag::BlackOilModel>
+{ static constexpr bool value = false; };
+
+template<class TypeTag>
 struct EnergyModuleType<TypeTag, TTag::BlackOilModel>
 { static constexpr EnergyModules value = EnergyModules::NoTemperature; };
 
@@ -361,6 +365,7 @@ private:
     static constexpr bool enableSolvent = getPropValue<TypeTag, Properties::EnableSolvent>();
     static constexpr EnergyModules energyModuleType = getPropValue<TypeTag, Properties::EnergyModuleType>();
     static constexpr bool enableFullyImplicitThermal = energyModuleType == EnergyModules::FullyImplicitThermal;
+    static constexpr bool enableParticle = getPropValue<TypeTag, Properties::EnableParticle>();
     static constexpr bool waterEnabled = Indices::waterEnabled;
 
     using BioeffectsModule = BlackOilBioeffectsModule<TypeTag, enableBioeffects>;
@@ -369,6 +374,7 @@ private:
     using EnergyModule = BlackOilEnergyModule<TypeTag, energyModuleType>;
     using ExtboModule = BlackOilExtboModule<TypeTag, enableExtbo>;
     using PolymerModule = BlackOilPolymerModule<TypeTag, enablePolymer>;
+    using ParticleModule = BlackOilParticleModule<TypeTag, enableParticle>;
     using SolventModule = BlackOilSolventModule<TypeTag, enableSolvent>;
 
 public:
@@ -404,6 +410,9 @@ public:
         }
         if constexpr (enableBioeffects) {
             BioeffectsModule::registerParameters();
+        }
+        if constexpr (enableParticle) {
+            ParticleModule::registerParameters();
         }
 
         // register runtime parameters of the VTK output modules
@@ -749,6 +758,9 @@ protected:
         }
         if constexpr (enableBioeffects) {
             BioeffectsModule::registerOutputModules(asImp_(), this->simulator_);
+        }
+        if constexpr (enableParticle) {
+            ParticleModule::registerOutputModules(asImp_(), this->simulator_);
         }
 
         this->addOutputModule(std::make_unique<VtkBlackOilModule<TypeTag>>(this->simulator_));

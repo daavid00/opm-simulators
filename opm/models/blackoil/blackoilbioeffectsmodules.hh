@@ -520,8 +520,6 @@ BlackOilBioeffectsModule<TypeTag, true>::params_;
 template <class TypeTag>
 class BlackOilBioeffectsIntensiveQuantities<TypeTag, true>
 {
-    using Implementation = GetPropType<TypeTag, Properties::IntensiveQuantities>;
-
     using Scalar = GetPropType<TypeTag, Properties::Scalar>;
     using Evaluation = GetPropType<TypeTag, Properties::Evaluation>;
     using PrimaryVariables = GetPropType<TypeTag, Properties::PrimaryVariables>;

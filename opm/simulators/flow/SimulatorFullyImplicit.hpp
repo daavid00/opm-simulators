@@ -133,6 +133,8 @@ public:
     using PolymerModule = BlackOilPolymerModule<TypeTag, enablePolymer>;
     static constexpr bool enableBioeffects = getPropValue<TypeTag, Properties::EnableBioeffects>();
     using BioeffectsModule = BlackOilBioeffectsModule<TypeTag, enableBioeffects>;
+    static constexpr bool enableParticle = getPropValue<TypeTag, Properties::EnableParticle>();
+    using ParticleModule = BlackOilParticleModule<TypeTag, enableParticle>;
 
     using Solver = NonlinearSolver<TypeTag, Model>;
     using ModelParameters = typename Model::ModelParameters;

@@ -115,6 +115,7 @@ class BlackOilLocalResidualTPFA : public GetPropType<TypeTag, Properties::DiscLo
     static constexpr bool enableConvectiveMixing
         = getPropValue<TypeTag, Properties::EnableConvectiveMixing>();
     static constexpr bool enableBioeffects = getPropValue<TypeTag, Properties::EnableBioeffects>();
+    static constexpr bool enableParticle = getPropValue<TypeTag, Properties::EnableParticle>();
     static constexpr bool enableSaltPrecipitation
         = getPropValue<TypeTag, Properties::EnableSaltPrecipitation>();
     static constexpr bool enableMICP = Indices::enableMICP;
@@ -129,6 +130,7 @@ class BlackOilLocalResidualTPFA : public GetPropType<TypeTag, Properties::DiscLo
     using ExtboModule = BlackOilExtboModule<TypeTag, enableExtbo>;
     using FoamModule = BlackOilFoamModule<TypeTag, enableFoam>;
     using SolventModule = BlackOilSolventModule<TypeTag, enableSolvent>;
+    using ParticleModule = BlackOilParticleModule<TypeTag, enableParticle>;
     using PolymerModule = BlackOilPolymerModule<TypeTag, enablePolymer>;
 
     using ModuleParams = BlackoilModuleParams<ConvectiveMixingModuleParam<Scalar>>;
@@ -254,6 +256,11 @@ public:
         // deal with bioeffects (if present)
         if constexpr (enableBioeffects) {
             BioeffectsModule::addStorage(storage, intQuants);
+        }
+
+        // deal with particle (if present)
+        if constexpr (enableParticle) {
+            ParticleModule::addStorage(storage, intQuants);
         }
     }
 
@@ -428,7 +435,7 @@ public:
             Evaluation transMult = (intQuantsIn.rockCompTransMultiplier()
                                     + Toolbox::value(intQuantsEx.rockCompTransMultiplier()))
                 / 2;
-            if constexpr (enableBioeffects || enableSaltPrecipitation) {
+            if constexpr (enableBioeffects || enableSaltPrecipitation || enableParticle) {
                 transMult
                     *= (intQuantsIn.permFactor() + Toolbox::value(intQuantsEx.permFactor())) / 2;
             }
@@ -465,6 +472,10 @@ public:
                     BioeffectsModule::template addBioeffectsFluxes_<Evaluation>(
                         flux, phaseIdx, darcyFlux, up);
                 }
+                if constexpr (enableParticle) {
+                    ParticleModule::template addParticleFluxes_<Evaluation>(
+                        flux, phaseIdx, darcyFlux, up);
+                }
                 if constexpr (enableBrine) {
                     BrineModule::template addBrineFluxes_<Evaluation, FluidState>(
                         flux, phaseIdx, darcyFlux, up.fluidState());
@@ -481,6 +492,10 @@ public:
                 }
                 if constexpr (enableBioeffects) {
                     BioeffectsModule::template addBioeffectsFluxes_<Scalar>(
+                        flux, phaseIdx, darcyFlux, up);
+                }
+                if constexpr (enableParticle) {
+                    ParticleModule::template addParticleFluxes_<Scalar>(
                         flux, phaseIdx, darcyFlux, up);
                 }
                 if constexpr (enableBrine) {
@@ -801,6 +816,11 @@ public:
             BioeffectsModule::addSource(source, problem, insideIntQuants, globalSpaceIdex);
         }
 
+        // deal with particle (if present)
+        if constexpr (enableParticle) {
+            ParticleModule::addSource(source, problem, insideIntQuants, globalSpaceIdex);
+        }
+
         // scale the source term of the energy equation
         if constexpr (enableFullyImplicitThermal) {
             source[Indices::contiEnergyEqIdx]
@@ -820,6 +840,11 @@ public:
         // deal with bioeffects (if present)
         if constexpr (enableBioeffects) {
             BioeffectsModule::addSource(source, problem, insideIntQuants, globalSpaceIdex);
+        }
+
+        // deal with particle (if present)
+        if constexpr (enableParticle) {
+            ParticleModule::addSource(source, problem, insideIntQuants, globalSpaceIdex);
         }
 
         // scale the source term of the energy equation
@@ -844,6 +869,11 @@ public:
         // deal with bioeffects (if present)
         if constexpr (enableBioeffects) {
             BioeffectsModule::addSource(source, elemCtx, dofIdx, timeIdx);
+        }
+
+        // deal with particle (if present)
+        if constexpr (enableParticle) {
+            ParticleModule::addSource(source, elemCtx, dofIdx, timeIdx);
         }
 
         // scale the source term of the energy equation

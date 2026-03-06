@@ -76,6 +76,7 @@ class BlackOilIntensiveQuantities
     , public BlackOilBrineIntensiveQuantities<TypeTag, getPropValue<TypeTag, Properties::EnableBrine>()>
     , public BlackOilEnergyIntensiveQuantities<TypeTag, getPropValue<TypeTag, Properties::EnergyModuleType>()>
     , public BlackOilBioeffectsIntensiveQuantities<TypeTag, getPropValue<TypeTag, Properties::EnableBioeffects>()>
+    , public BlackOilParticleIntensiveQuantities<TypeTag, getPropValue<TypeTag, Properties::EnableParticle>()>
     , public BlackOilConvectiveMixingIntensiveQuantities<TypeTag, getPropValue<TypeTag, Properties::EnableConvectiveMixing>()>
 {
     using ParentType = GetPropType<TypeTag, Properties::DiscIntensiveQuantities>;
@@ -102,6 +103,7 @@ class BlackOilIntensiveQuantities
     static constexpr bool enableDispersion = getPropValue<TypeTag, Properties::EnableDispersion>();
     static constexpr bool enableExtbo = getPropValue<TypeTag, Properties::EnableExtbo>();
     static constexpr bool enableFoam = getPropValue<TypeTag, Properties::EnableFoam>();
+    static constexpr bool enableParticle = getPropValue<TypeTag, Properties::EnableParticle>();
     static constexpr bool enablePolymer = getPropValue<TypeTag, Properties::EnablePolymer>();
     static constexpr bool enableSolvent = getPropValue<TypeTag, Properties::EnableSolvent>();
     static constexpr bool enableTemperature = energyModuleType != EnergyModules::NoTemperature;
@@ -133,6 +135,8 @@ class BlackOilIntensiveQuantities
     using BrineIntQua = BlackOilBrineIntensiveQuantities<TypeTag, enableSaltPrecipitation>;
     using BioeffectsModule = BlackOilBioeffectsModule<TypeTag, enableBioeffects>;
     using BioeffectsIntQua = BlackOilBioeffectsIntensiveQuantities<TypeTag, enableBioeffects>;
+    using ParticleModule = BlackOilParticleModule<TypeTag, enableParticle>;
+    using ParticleIntQua = BlackOilParticleIntensiveQuantities<TypeTag, enableParticle>;
 
 public:
     using FluidState = BlackOilFluidState<Evaluation,
@@ -641,6 +645,13 @@ public:
             porosity_ -= min(biofilm_ + calcite_, referencePorosity_ - 1e-8);
         }
 
+        // deal with particle (minimum porosity of 1e-8 to prevent numerical issues)
+        if constexpr (enableParticle) {
+            const Evaluation particle_ = priVars.makeEvaluation(Indices::particleVolumeFractionIdx,
+                                                                timeIdx, linearizationType);
+            porosity_ -= min(particle_, referencePorosity_ - 1e-8);
+        }
+
         // deal with salt-precipitation
         if (enableSaltPrecipitation && priVars.primaryVarsMeaningBrine() == PrimaryVariables::BrineMeaning::Sp) {
             const Evaluation Sp = priVars.makeEvaluation(Indices::saltConcentrationIdx, timeIdx);
@@ -728,6 +739,9 @@ public:
         }
         if constexpr (enableBrine) {
             asImp_().saltPropertiesUpdate_(elemCtx, dofIdx, timeIdx);
+        }
+        if constexpr (enableParticle) {
+            asImp_().particlePropertiesUpdate_(elemCtx, dofIdx, timeIdx);
         }
         if constexpr (enableConvectiveMixing) {
             // The ifs are here is to avoid extra calculations for
@@ -909,6 +923,9 @@ public:
         else if constexpr (enableSaltPrecipitation) {
             return BrineIntQua::permFactor();
         }
+        else if constexpr (enableParticle) {
+            return ParticleIntQua::permFactor();
+        }
         else {
             OPM_THROW(std::logic_error, "permFactor() called but salt precipitation and bioeffects are disabled");
         }
@@ -930,6 +947,7 @@ private:
     friend BlackOilFoamIntensiveQuantities<TypeTag, enableFoam>;
     friend BlackOilBrineIntensiveQuantities<TypeTag, enableBrine>;
     friend BlackOilBioeffectsIntensiveQuantities<TypeTag, enableBioeffects>;
+    friend BlackOilParticleIntensiveQuantities<TypeTag, enableParticle>;
 
     OPM_HOST_DEVICE Implementation& asImp_()
     { return *static_cast<Implementation*>(this); }

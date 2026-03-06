@@ -124,6 +124,10 @@ public:
                                   const std::vector<EvalWell>& cq_s,
                                   const std::variant<Scalar,EvalWell>& microbialConcentration) const;
 
+    Eval connectionRateParticle(Scalar& rate,
+                                const std::vector<EvalWell>& cq_s,
+                                const std::variant<Scalar,EvalWell>& particleConcentration) const;
+
     std::tuple<Eval,Eval,Eval>
     connectionRatesMICP(Scalar& rate_m,
                         Scalar& rate_o,

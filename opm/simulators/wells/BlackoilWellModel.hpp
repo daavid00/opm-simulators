@@ -128,6 +128,7 @@ template<class Scalar> class WellContributions;
             static constexpr bool has_micp_ = Indices::enableMICP;
             static constexpr bool has_geochem_ = getPropValue<TypeTag, Properties::EnableGeochemistry>();
             static constexpr bool has_bioeffects_ = getPropValue<TypeTag, Properties::EnableBioeffects>();
+            static constexpr bool has_particle_ = getPropValue<TypeTag, Properties::EnableParticle>();
 
             // TODO: where we should put these types, WellInterface or Well Model?
             // or there is some other strategy, like TypeTag
@@ -136,6 +137,7 @@ template<class Scalar> class WellContributions;
 
             using PolymerModule = BlackOilPolymerModule<TypeTag, has_polymer_>;
             using BioeffectsModule = BlackOilBioeffectsModule<TypeTag, has_bioeffects_>;
+            using ParticleModule = BlackOilParticleModule<TypeTag, has_particle_>;
 
             // For the conversion between the surface volume rate and reservoir voidage rate
             using RateConverterType = RateConverter::

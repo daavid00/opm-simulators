@@ -68,6 +68,9 @@ struct BlackOilOnePhaseIndices
     //! Shall energy be conserved?
     static constexpr bool enableFullyImplicitThermal = numEnergyV > 0;
 
+    //! Are particles involved? (suspended and retained ones)
+    static constexpr bool enableParticle = numBioCompV == 2;
+
     //! Is MICP involved? (microbes, oxygen, urea, biofilm, and calcite)
     static constexpr bool enableMICP = numBioCompV == 5;
 
@@ -101,9 +104,12 @@ struct BlackOilOnePhaseIndices
     //! Number of biocomponents in the water phase
     static constexpr int numBioInWat = enableMICP ? 3 : 0;
 
+    //! Number of particles to be considered
+    static constexpr int numParticles = enableParticle ? numBioCompV : 0;
+
     //! The number of equations
     static constexpr int numEq = numPhases + numSolvents + numExtbos + numPolymers +
-                                 numEnergy + numFoam + numBrine + numMICPs;
+                                 numEnergy + numFoam + numBrine + numMICPs + numParticles;
 
     //! We may want to evaluate with more derivatives that equations, but not this time
     static constexpr int numDerivatives = numEq;
@@ -157,6 +163,16 @@ struct BlackOilOnePhaseIndices
     static constexpr unsigned polymerMoleWeightIdx =
         numPolymers > 1 ? polymerConcentrationIdx + 1
                         : std::numeric_limits<unsigned>::max();
+
+    //! Index of the primary variable for the suspended particles
+    static constexpr unsigned particleConcentrationIdx =
+        enableParticle ? PVOffset + numPhases + numSolvents
+                       : std::numeric_limits<unsigned>::max();
+
+    //! Index of the primary variable for the stucked particles
+    static constexpr unsigned particleVolumeFractionIdx =
+        enableParticle ? particleConcentrationIdx + 1
+                       : std::numeric_limits<unsigned>::max();
 
     //! Index of the primary variable for the first MICP component
     static constexpr unsigned microbialConcentrationIdx =
@@ -222,6 +238,14 @@ struct BlackOilOnePhaseIndices
     static constexpr int contiPolymerMWEqIdx =
         numPolymers > 1 ? contiPolymerEqIdx + 1 : -1000;
 
+    //! Index of the continuity equation for the suspended particles
+    static constexpr int contiSuspendedParticleEqIdx =
+        enableParticle ? PVOffset + numPhases + numSolvents : -1000;
+
+    //! Index of the continuity equation for the retained particles
+    static constexpr int contiRetainedParticleEqIdx =
+        enableParticle ? contiSuspendedParticleEqIdx + 1 : -1000;
+
     //! Index of the continuity equation for the first MICP component
     static constexpr int contiMicrobialEqIdx =
         enableMICP ? PVOffset + numPhases + numSolvents : -1000;
@@ -244,15 +268,15 @@ struct BlackOilOnePhaseIndices
 
     //! Index of the continuity equation for the foam component
     static constexpr int contiFoamEqIdx =
-        enableFoam ? PVOffset + numPhases + numSolvents + numPolymers + numMICPs : -1000;
+        enableFoam ? PVOffset + numPhases + numSolvents + numPolymers + numMICPs + numParticles : -1000;
 
     //! Index of the continuity equation for the salt component
     static constexpr int contiBrineEqIdx =
-        enableBrine ? PVOffset + numPhases + numSolvents + numExtbos + numPolymers + numMICPs + numFoam : -1000;
+        enableBrine ? PVOffset + numPhases + numSolvents + numExtbos + numPolymers + numMICPs + numParticles + numFoam : -1000;
 
     //! Index of the continuity equation for energy
     static constexpr int contiEnergyEqIdx =
-        enableFullyImplicitThermal ? PVOffset + numPhases + numSolvents + numExtbos + numPolymers + numMICPs + numFoam + numBrine: -1000;
+        enableFullyImplicitThermal ? PVOffset + numPhases + numSolvents + numExtbos + numPolymers + numMICPs + numParticles + numFoam + numBrine: -1000;
 };
 
 } // namespace Opm

@@ -270,6 +270,11 @@ struct EnableBioeffects<TypeTag, TTag::FlowCompProblem<NumComp, EnableWater>> {
 };
 
 template<class TypeTag, int NumComp, bool EnableWater>
+struct EnableParticle<TypeTag, TTag::FlowCompProblem<NumComp, EnableWater>> {
+    static constexpr bool value = false;
+};
+
+template<class TypeTag, int NumComp, bool EnableWater>
 struct EnableDebuggingChecks<TypeTag, TTag::FlowCompProblem<NumComp, EnableWater>>{
     static constexpr bool value = false;
 };
