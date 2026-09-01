@@ -1221,12 +1221,12 @@ getMaxCoeff(const unsigned cell_idx,
         R_sum[contiBiofilmEqIdx] += R2;
         maxCoeff[contiBiofilmEqIdx] = std::max(maxCoeff[contiBiofilmEqIdx],
                                                std::abs(R2) / pvValue);
+        B_avg[contiOxygenEqIdx] += 1.0 / fs.invB(FluidSystem::waterPhaseIdx).value();
+        const auto R3 = modelResid[cell_idx][contiOxygenEqIdx];
+        R_sum[contiOxygenEqIdx] += R3;
+        maxCoeff[contiOxygenEqIdx] = std::max(maxCoeff[contiOxygenEqIdx],
+                                            std::abs(R3) / pvValue);
         if constexpr (has_micp_) {
-            B_avg[contiOxygenEqIdx] += 1.0 / fs.invB(FluidSystem::waterPhaseIdx).value();
-            const auto R3 = modelResid[cell_idx][contiOxygenEqIdx];
-            R_sum[contiOxygenEqIdx] += R3;
-            maxCoeff[contiOxygenEqIdx] = std::max(maxCoeff[contiOxygenEqIdx],
-                                                std::abs(R3) / pvValue);
             B_avg[contiUreaEqIdx] += 1.0 / fs.invB(FluidSystem::waterPhaseIdx).value();
             const auto R4 = modelResid[cell_idx][contiUreaEqIdx];
             R_sum[contiUreaEqIdx] += R4;

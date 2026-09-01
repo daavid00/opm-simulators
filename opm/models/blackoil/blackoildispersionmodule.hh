@@ -156,13 +156,13 @@ public:
                  normVelocityAvg[waterPhaseIdx] *
                  dispersivity *
                  diffR;
+            diffR = inIq.oxygenConcentration() - Toolbox::value(exIq.oxygenConcentration());
+            flux[contiOxygenEqIdx] +=
+                bAvg *
+                normVelocityAvg[waterPhaseIdx] *
+                dispersivity *
+                diffR;
             if constexpr(enableMICP) {
-                diffR = inIq.oxygenConcentration() - Toolbox::value(exIq.oxygenConcentration());
-                flux[contiOxygenEqIdx] +=
-                    bAvg *
-                    normVelocityAvg[waterPhaseIdx] *
-                    dispersivity *
-                    diffR;
                 diffR = inIq.ureaConcentration() - Toolbox::value(exIq.ureaConcentration());
                 flux[contiUreaEqIdx] +=
                     bAvg *

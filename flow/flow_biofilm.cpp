@@ -105,7 +105,7 @@ public:
                                          getPropValue<TypeTag, Properties::EnableBrine>(),
                                          /*PVOffset=*/0,
                                          /*disabledCompIdx=*/FluidSystem::oilCompIdx,
-                                         2>; //Two biocomponents (suspended microbes and biofilm)
+                                         3>; //Three biocomponents (suspended microbes, reactant, and biofilm)
 };
 
 } // namespace Opm::Properties

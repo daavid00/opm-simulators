@@ -35,10 +35,10 @@ void VtkBlackOilBioeffectsParams::registerParameters(const bool isMICP)
          "in the VTK output files");
     Parameters::Register<Parameters::VtkWriteBiofilmVolumeFraction>
         ("Include the biofilm volume fraction in the VTK output files");
+    Parameters::Register<Parameters::VtkWriteOxygenConcentration>
+        ("Include the concentration of the oxygen component in the water phase "
+        "in the VTK output files");
     if (isMICP) {
-        Parameters::Register<Parameters::VtkWriteOxygenConcentration>
-            ("Include the concentration of the oxygen component in the water phase "
-            "in the VTK output files");
         Parameters::Register<Parameters::VtkWriteUreaConcentration>
             ("Include the concentration of the urea component in the water phase "
             "in the VTK output files");
@@ -51,8 +51,8 @@ void VtkBlackOilBioeffectsParams::read(const bool isMICP)
 {
     microbialConcentrationOutput_ = Parameters::Get<Parameters::VtkWriteMicrobialConcentration>();
     biofilmVolumeFractionOutput_ = Parameters::Get<Parameters::VtkWriteBiofilmVolumeFraction>();
+    oxygenConcentrationOutput_ = Parameters::Get<Parameters::VtkWriteOxygenConcentration>();
     if (isMICP) {
-        oxygenConcentrationOutput_ = Parameters::Get<Parameters::VtkWriteOxygenConcentration>();
         ureaConcentrationOutput_ = Parameters::Get<Parameters::VtkWriteUreaConcentration>();
         calciteVolumeFractionOutput_ = Parameters::Get<Parameters::VtkWriteCalciteVolumeFraction>();
     }

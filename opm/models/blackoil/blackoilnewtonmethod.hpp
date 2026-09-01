@@ -418,10 +418,10 @@ protected:
                                                   Scalar{0.0},
                                                   this->problem().referencePorosity(globalDofIdx, 0) - 1e-8);
                 }
+                if (pvIdx == Indices::oxygenConcentrationIdx) {
+                    nextValue[pvIdx] = std::max(nextValue[pvIdx], Scalar{0.0});
+                }
                 if constexpr (enableMICP) {
-                    if (pvIdx == Indices::oxygenConcentrationIdx) {
-                        nextValue[pvIdx] = std::max(nextValue[pvIdx], Scalar{0.0});
-                    }
                     if (pvIdx == Indices::ureaConcentrationIdx) {
                         nextValue[pvIdx] = std::max(nextValue[pvIdx], Scalar{0.0});
                     }

@@ -1190,10 +1190,10 @@ private:
             if (this->fipC_.hasBiofilmMass()) {
                 this->updateBiofilmMass(globalDofIdx, intQuants, totVolume);
             }
+            if (this->fipC_.hasOxygenMass()) {
+                this->updateOxygenMass(globalDofIdx, intQuants, surfVolWat);
+            }
             if constexpr(enableMICP) {
-                if (this->fipC_.hasOxygenMass()) {
-                    this->updateOxygenMass(globalDofIdx, intQuants, surfVolWat);
-                }
                 if (this->fipC_.hasUreaMass()) {
                     this->updateUreaMass(globalDofIdx, intQuants, surfVolWat);
                 }
@@ -1869,10 +1869,10 @@ private:
                       if constexpr (enableBioeffects) {
                           bioeffectsC.assign(ectx.globalDofIdx,
                                              ectx.intQuants.microbialConcentration().value(),
-                                             ectx.intQuants.biofilmVolumeFraction().value());
+                                             ectx.intQuants.biofilmVolumeFraction().value(),
+                                             ectx.intQuants.oxygenConcentration().value());
                           if (Indices::enableMICP) {
                               bioeffectsC.assign(ectx.globalDofIdx,
-                                                 ectx.intQuants.oxygenConcentration().value(),
                                                  ectx.intQuants.ureaConcentration().value(),
                                                  ectx.intQuants.calciteVolumeFraction().value());
                           }

@@ -42,13 +42,13 @@ public:
     void allocate(const unsigned bufferSize, const bool isMICP);
 
     void assign(const unsigned globalDofIdx,
-                const Scalar oxygenConcentration,
                 const Scalar ureaConcentration,
                 const Scalar calciteVolumeFraction);
 
     void assign(const unsigned globalDofIdx,
                 const Scalar microbialConcentration,
-                const Scalar biofilmVolumeFraction);
+                const Scalar biofilmVolumeFraction,
+                const Scalar oxygenConcentration);
 
     BioeffectsSolutionContainer<Scalar> getSolution() const;
 

@@ -120,10 +120,11 @@ ComponentName<FluidSystem,Indices>::ComponentName()
         }
     }
 
-    if constexpr (requires { Indices::enableBiofilm; Indices::microbialConcentrationIdx; Indices::biofilmVolumeFractionIdx; }) {
+    if constexpr (requires { Indices::enableBiofilm; Indices::microbialConcentrationIdx; Indices::biofilmVolumeFractionIdx; Indices::oxygenConcentrationIdx;}) {
         if constexpr (Indices::enableBiofilm) {
             names_[Indices::microbialConcentrationIdx] = "Microbes";
             names_[Indices::biofilmVolumeFractionIdx] = "Biofilm";
+            names_[Indices::oxygenConcentrationIdx] = "Oxygen";
         }
     }
 }

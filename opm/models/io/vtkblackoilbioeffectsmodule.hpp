@@ -106,10 +106,10 @@ public:
             if (params_.biofilmVolumeFractionOutput_) {
                 this->resizeScalarBuffer_(biofilmVolumeFraction_, BufferType::Dof);
             }
+            if (params_.oxygenConcentrationOutput_) {
+                this->resizeScalarBuffer_(oxygenConcentration_, BufferType::Dof);
+            }
             if constexpr (enableMICP) {
-                if (params_.oxygenConcentrationOutput_) {
-                    this->resizeScalarBuffer_(oxygenConcentration_, BufferType::Dof);
-                }
                 if (params_.ureaConcentrationOutput_) {
                     this->resizeScalarBuffer_(ureaConcentration_, BufferType::Dof);
                 }
@@ -143,11 +143,11 @@ public:
                     biofilmVolumeFraction_[globalDofIdx] =
                         scalarValue(intQuants.biofilmVolumeFraction());
                 }
+                if (params_.oxygenConcentrationOutput_) {
+                    oxygenConcentration_[globalDofIdx] =
+                        scalarValue(intQuants.oxygenConcentration());
+                }
                 if constexpr (enableMICP) {
-                    if (params_.oxygenConcentrationOutput_) {
-                        oxygenConcentration_[globalDofIdx] =
-                            scalarValue(intQuants.oxygenConcentration());
-                    }
                     if (params_.ureaConcentrationOutput_) {
                         ureaConcentration_[globalDofIdx] =
                             scalarValue(intQuants.ureaConcentration());
@@ -179,11 +179,11 @@ public:
                 this->commitScalarBuffer_(baseWriter, "biofilm volume fraction",
                                           biofilmVolumeFraction_, BufferType::Dof);
             }
+            if (params_.oxygenConcentrationOutput_) {
+                this->commitScalarBuffer_(baseWriter, "oxygen concentration",
+                                            oxygenConcentration_, BufferType::Dof);
+            }
             if constexpr (enableMICP) {
-                if (params_.oxygenConcentrationOutput_) {
-                    this->commitScalarBuffer_(baseWriter, "oxygen concentration",
-                                              oxygenConcentration_, BufferType::Dof);
-                }
                 if (params_.ureaConcentrationOutput_) {
                     this->commitScalarBuffer_(baseWriter, "urea concentration",
                                               ureaConcentration_, BufferType::Dof);

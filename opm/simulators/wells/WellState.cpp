@@ -625,8 +625,8 @@ report(const int*                            globalCellIdxMap,
 
         if (pu.hasBiofilm() || pu.hasMICP()) {
             well.rates.set(rt::microbial, ws.sum_microbial_rates());
+            well.rates.set(rt::oxygen, ws.sum_oxygen_rates());
             if (pu.hasMICP()) {
-                well.rates.set(rt::oxygen, ws.sum_oxygen_rates());
                 well.rates.set(rt::urea, ws.sum_urea_rates());
             }
         }
@@ -1333,8 +1333,8 @@ reportConnectionPressuresAndRates(const std::size_t well_index,
     if (pu.hasBiofilm() || pu.hasMICP()) {
         for (auto i = 0*num_perf_well; i < num_perf_well; ++i) {
             connections[i].rates.set(rt::microbial, perf_data.microbial_rates[i]);
+            connections[i].rates.set(rt::oxygen, perf_data.oxygen_rates[i]);
             if (pu.hasMICP()) {
-                connections[i].rates.set(rt::oxygen, perf_data.oxygen_rates[i]);
                 connections[i].rates.set(rt::urea, perf_data.urea_rates[i]);
             }
         }

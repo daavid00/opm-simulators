@@ -687,6 +687,9 @@ public:
             if constexpr (enablePolymer) {
                 rate[Indices::polymerConcentrationIdx] += source.rate(ijk, SourceComponent::POLYMER) / this->model().dofTotalVolume(globalDofIdx);
             }
+            if constexpr (enableBioeffects) {
+                rate[Indices::oxygenConcentrationIdx] += source.rate(ijk, SourceComponent::OXYG) / this->model().dofTotalVolume(globalDofIdx);
+            }
             if constexpr (enableMICP) {
                 rate[Indices::microbialConcentrationIdx] += source.rate(ijk, SourceComponent::MICR) / this->model().dofTotalVolume(globalDofIdx);
                 rate[Indices::oxygenConcentrationIdx] += source.rate(ijk, SourceComponent::OXYG) / this->model().dofTotalVolume(globalDofIdx);
@@ -998,8 +1001,8 @@ public:
         if constexpr (enableBioeffects) {
             values[Indices::microbialConcentrationIdx] = this->bioeffects_.microbialConcentration[globalDofIdx];
             values[Indices::biofilmVolumeFractionIdx] = this->bioeffects_.biofilmVolumeFraction[globalDofIdx];
+            values[Indices::oxygenConcentrationIdx] = this->bioeffects_.oxygenConcentration[globalDofIdx];
             if constexpr (enableMICP) {
-                values[Indices::oxygenConcentrationIdx] = this->bioeffects_.oxygenConcentration[globalDofIdx];
                 values[Indices::ureaConcentrationIdx] = this->bioeffects_.ureaConcentration[globalDofIdx];
                 values[Indices::calciteVolumeFractionIdx] = this->bioeffects_.calciteVolumeFraction[globalDofIdx];
             }

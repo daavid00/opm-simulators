@@ -627,8 +627,8 @@ namespace Opm
 
         if constexpr (has_bioeffects) {
             std::variant<Scalar,EvalWell> microbialConcentration;
+            std::variant<Scalar,EvalWell> oxygenConcentration;
             if constexpr (has_micp) {
-                std::variant<Scalar,EvalWell> oxygenConcentration;
                 std::variant<Scalar,EvalWell> ureaConcentration;
                 if (this->isInjector()) {
                     microbialConcentration = this->wmicrobes();
@@ -653,10 +653,14 @@ namespace Opm
             else {
                 if (this->isProducer()) {
                     microbialConcentration = this->extendEval(intQuants.microbialConcentration());
-                    connectionRates[perf][Indices::contiMicrobialEqIdx] =
+                    oxygenConcentration = this->extendEval(intQuants.oxygenConcentration());
+                    std::tie(connectionRates[perf][Indices::contiMicrobialEqIdx],
+                             connectionRates[perf][Indices::contiOxygenEqIdx]) =
                     this->connections_.connectionRateBioeffects(perf_data.microbial_rates[perf],
+                                                                perf_data.oxygen_rates[perf],
                                                                 perf_rates.vap_wat, cq_s,
-                                                                microbialConcentration);
+                                                                microbialConcentration,
+                                                                oxygenConcentration);
                 }
             }
         }

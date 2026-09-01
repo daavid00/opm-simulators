@@ -255,13 +255,13 @@ public:
                 diffR *
                 diffusivity *
                 effectiveBioDiffCoefficient[BioeffectsParams::micrDiffIdx];
+            diffR = inIq.oxygenConcentration() - Toolbox::value(exIq.oxygenConcentration());
+            flux[contiOxygenEqIdx] +=
+                bAvg *
+                diffR *
+                diffusivity *
+                effectiveBioDiffCoefficient[BioeffectsParams::oxygDiffIdx];
             if constexpr(enableMICP) {
-                diffR = inIq.oxygenConcentration() - Toolbox::value(exIq.oxygenConcentration());
-                flux[contiOxygenEqIdx] +=
-                    bAvg *
-                    diffR *
-                    diffusivity *
-                    effectiveBioDiffCoefficient[BioeffectsParams::oxygDiffIdx];
                 diffR = inIq.ureaConcentration() - Toolbox::value(exIq.ureaConcentration());
                 flux[contiUreaEqIdx] +=
                     bAvg *

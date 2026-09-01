@@ -106,12 +106,14 @@ initFromState(const EclipseState& eclState)
     detachmentRate_.resize(numSatRegions);
     detachmentExponent_.resize(numSatRegions);
     microbialAttachmentRate_.resize(numSatRegions);
+    halfVelocityUrea_.resize(numSatRegions);
+    yieldUreaToCalciteCoefficient_.resize(numSatRegions);
+    maximumMicrobialDeathRate_.resize(numSatRegions);
+    microbialDeathRateExponent_.resize(numSatRegions);
     if constexpr (enableMICP) {
         densityCalcite_.resize(numSatRegions);
-        halfVelocityUrea_.resize(numSatRegions);
         maximumUreaUtilization_.resize(numSatRegions);
         oxygenConsumptionFactor_.resize(numSatRegions);
-        yieldUreaToCalciteCoefficient_.resize(numSatRegions);
     }
     for (unsigned stnRegionIdx = 0; stnRegionIdx < numSatRegions; ++stnRegionIdx) {
         const BiofilmTable& biofilmTable = biofilmTables.getTable<BiofilmTable>(stnRegionIdx);
@@ -123,12 +125,14 @@ initFromState(const EclipseState& eclState)
         detachmentRate_[stnRegionIdx] = biofilmTable.getDetachmentRate().front();
         detachmentExponent_[stnRegionIdx] = biofilmTable.getDetachmentExponent().front();
         microbialAttachmentRate_[stnRegionIdx] = biofilmTable.getMicrobialAttachmentRate().front();
+        halfVelocityUrea_[stnRegionIdx] = biofilmTable.getHalfVelocityUrea().front();
+        yieldUreaToCalciteCoefficient_[stnRegionIdx] = biofilmTable.getYieldUreaToCalciteCoefficient().front();
+        maximumMicrobialDeathRate_[stnRegionIdx] = biofilmTable.getMaximumMicrobialDeathRate().front();
+        microbialDeathRateExponent_[stnRegionIdx] = biofilmTable.getMicrobialDeathRateExponent().front();
         if constexpr (enableMICP) {
             densityCalcite_[stnRegionIdx] = biofilmTable.getDensityCalcite().front();
-            halfVelocityUrea_[stnRegionIdx] = biofilmTable.getHalfVelocityUrea().front();
             maximumUreaUtilization_[stnRegionIdx] = biofilmTable.getMaximumUreaUtilization().front();
             oxygenConsumptionFactor_[stnRegionIdx] = biofilmTable.getOxygenConsumptionFactor().front();
-            yieldUreaToCalciteCoefficient_[stnRegionIdx] = biofilmTable.getYieldUreaToCalciteCoefficient().front();
         }
     }
 

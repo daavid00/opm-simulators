@@ -622,12 +622,12 @@ readBlackoilExtentionsInitialConditions_(std::size_t numDof,
         } else {
             bioeffects_.biofilmVolumeFraction.resize(numDof, 0.0);
         }
+        if (eclState_.fieldProps().has_double("SOXYG")) {
+            bioeffects_.oxygenConcentration = getArray(eclState_.fieldProps().get_double("SOXYG"));
+        } else {
+            bioeffects_.oxygenConcentration.resize(numDof, 0.0);
+        }
         if (enableMICP) {
-            if (eclState_.fieldProps().has_double("SOXYG")) {
-                bioeffects_.oxygenConcentration = getArray(eclState_.fieldProps().get_double("SOXYG"));
-            } else {
-                bioeffects_.oxygenConcentration.resize(numDof, 0.0);
-            }
             if (eclState_.fieldProps().has_double("SUREA")) {
                 bioeffects_.ureaConcentration = getArray(eclState_.fieldProps().get_double("SUREA"));
             } else {

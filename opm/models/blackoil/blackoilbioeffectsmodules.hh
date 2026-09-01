@@ -162,7 +162,7 @@ public:
                 return eqIdx == contiMicrobialEqIdx || eqIdx == contiOxygenEqIdx || eqIdx == contiUreaEqIdx
                     || eqIdx == contiBiofilmEqIdx || eqIdx == contiCalciteEqIdx;
             else
-               return eqIdx == contiMicrobialEqIdx || eqIdx == contiBiofilmEqIdx;
+               return eqIdx == contiMicrobialEqIdx || eqIdx == contiBiofilmEqIdx || eqIdx == contiOxygenEqIdx;
         else
             return false;
     }
@@ -194,10 +194,10 @@ public:
             // biofilm
             const LhsEval accumulationBiofilm = Toolbox::template decay<LhsEval>(intQuants.biofilmVolumeFraction());
             storage[contiBiofilmEqIdx] += accumulationBiofilm;
+            // oxygen in water phase
+            const LhsEval accumulationOxygen = surfaceVolumeWater * Toolbox::template decay<LhsEval>(intQuants.oxygenConcentration());
+            storage[contiOxygenEqIdx] += accumulationOxygen;
             if constexpr (enableMICP) {
-                // oxygen in water phase
-                const LhsEval accumulationOxygen = surfaceVolumeWater * Toolbox::template decay<LhsEval>(intQuants.oxygenConcentration());
-                storage[contiOxygenEqIdx] += accumulationOxygen;
                 // urea in water phase (applying the scaling factor for the urea equation)
                 const LhsEval accumulationUrea = surfaceVolumeWater * Toolbox::template decay<LhsEval>(intQuants.ureaConcentration());
                 storage[contiUreaEqIdx] += accumulationUrea;
@@ -221,11 +221,11 @@ public:
                     decay<UpEval>(upFs.microbialConcentration())
                     * decay<UpEval>(upFs.fluidState().invB(waterPhaseIdx))
                     * volumeFlux;
+                flux[contiOxygenEqIdx] =
+                    decay<UpEval>(upFs.oxygenConcentration())
+                    * decay<UpEval>(upFs.fluidState().invB(waterPhaseIdx))
+                    * volumeFlux;
                 if constexpr (enableMICP) {
-                    flux[contiOxygenEqIdx] =
-                        decay<UpEval>(upFs.oxygenConcentration())
-                        * decay<UpEval>(upFs.fluidState().invB(waterPhaseIdx))
-                        * volumeFlux;
                     flux[contiUreaEqIdx] =
                         decay<UpEval>(upFs.ureaConcentration())
                         * decay<UpEval>(upFs.fluidState().invB(waterPhaseIdx))
@@ -253,8 +253,8 @@ public:
             unsigned focusIdx = elemCtx.focusDofIndex();
             unsigned upIdx = extQuants.upstreamIndex(waterPhaseIdx);
             flux[contiMicrobialEqIdx] = 0.0;
+            flux[contiOxygenEqIdx] = 0.0;
             if constexpr (enableMICP) {
-                flux[contiOxygenEqIdx] = 0.0;
                 flux[contiUreaEqIdx] = 0.0;
             }
             if (upIdx == focusIdx)
@@ -287,6 +287,10 @@ public:
             unsigned satnumIdx = problem.satnumRegionIndex(globalSpaceIdex);
             Scalar rho_b = densityBiofilm(satnumIdx);
             Scalar k_d = microbialDeathRate(satnumIdx);
+            Scalar k_dMax = maximumMicrobialDeathRate(satnumIdx);
+            Scalar n_d = microbialDeathRateExponent(satnumIdx);
+            Scalar k_A = halfVelocityUrea(satnumIdx); //halfVelocityReactant, using the urea impl;
+            Scalar nu_A = yieldUreaToCalciteCoefficient(satnumIdx); //reactantConsumptionFactor, using the yieldUreaToCalciteCoefficient;
             Scalar mu = maximumGrowthRate(satnumIdx);
             Scalar k_n = halfVelocityGrowth(satnumIdx);
             Scalar Y = yieldGrowthCoefficient(satnumIdx);
@@ -340,44 +344,79 @@ public:
                 source[Indices::contiUreaEqIdx] *= getPropValue<TypeTag, Properties::BlackOilUreaScalingFactor>();
             }
             else {
+                // Calculate the maximum water and gas velocities used for hydrodynamic detachment (reactant factor)
+                const Scalar normVelocityCellW = normVelocityCell;
                 const Scalar normVelocityCellG =
-                std::accumulate(velocityInfos.begin(), velocityInfos.end(), 0.0,
-                                [](const auto acc, const auto& info)
-                                { return max(acc, std::abs(info.velocity[1])); });
-                normVelocityCell = max(normVelocityCellG, normVelocityCell);
-                // convert Rsw to concentration to use in source term
+                    std::accumulate(velocityInfos.begin(), velocityInfos.end(), 0.0,
+                                    [](const auto acc, const auto& info)
+                                    { return max(acc, std::abs(info.velocity[FluidSystem::gasPhaseIdx])); });
+                const Scalar gasDetachmentFactor = 1.0;
+                const Scalar normVelocityCellHydrodynamic =
+                    max(normVelocityCellW, gasDetachmentFactor * normVelocityCellG);
+                // Get the fluid-state quantities
                 const auto& fs = intQuants.fluidState();
                 const auto& Sw = fs.saturation(waterPhaseIdx);
                 const auto& Rsw = fs.Rsw();
                 const auto& rhow = fs.density(waterPhaseIdx);
                 unsigned pvtRegionIndex = fs.pvtRegionIndex();
-
                 const auto& xG = RswToMassFraction(pvtRegionIndex, Rsw);
-
-                // get the porosity and and gas density for convenience
-                const Evaluation& poro = intQuants.porosity();
-                Scalar rho_gRef = FluidSystem::referenceDensity(FluidSystem::gasPhaseIdx, pvtRegionIndex);
-
-                // calculate biofilm growth rate
-                Evaluation k_g = mu * (xG * rhow * poro * Sw / (xG * rhow * poro * Sw + k_n));
-                if (xG < 0) {
-                    k_g = mu * (xG * rhow * poro * Sw / k_n);
-                }
-
-                // compute source terms
-                // decay, detachment, and attachment rate of suspended microbes
-                source[contiMicrobialEqIdx] += Sw * intQuants.microbialConcentration() * intQuants.porosity() * b
-                                               * (- k_a - k_d)
-                                               + intQuants.biofilmVolumeFraction() * rho_b * k_str
-                                               * pow(normVelocityCell / intQuants.porosity(), eta);
-                // biofilm growth and decay rate
-                source[contiBiofilmEqIdx] += (k_g - k_d - k_str * pow(normVelocityCell / intQuants.porosity(), eta))
-                                             * intQuants.biofilmVolumeFraction()
-                                             + k_a * Sw * intQuants.microbialConcentration() * intQuants.porosity() * b / rho_b;
-
-                // biofilm consumption of dissolved gas is proportional to biofilm growth rate
-                unsigned activeGasCompIdx = FluidSystem::canonicalToActiveCompIdx(gasCompIdx);
-                source[activeGasCompIdx] -= intQuants.biofilmVolumeFraction() * rho_b * k_g / (Y * rho_gRef);
+                const Evaluation& porosity = intQuants.porosity();
+                const Evaluation& biofilm = intQuants.biofilmVolumeFraction();
+                const Evaluation reactantConcentration =
+                    max(intQuants.oxygenConcentration(), 0.0);
+                Scalar rho_gRef =
+                    FluidSystem::referenceDensity(FluidSystem::gasPhaseIdx, pvtRegionIndex);
+                // Calculate the dissolved hydrogen concentration and microbial activity
+                const Evaluation dissolvedHydrogenConcentration = max(xG * rhow, 0.0);
+                const Evaluation hydrogenMonod = dissolvedHydrogenConcentration /
+                                                 (dissolvedHydrogenConcentration + k_n);
+                const Evaluation reactantMonod = reactantConcentration /
+                                                 (reactantConcentration + k_A);
+                const Evaluation waterAvailability = min(max(Sw, 0.0), 1.0);
+                const Evaluation activityFactor =
+                    hydrogenMonod * reactantMonod * waterAvailability;
+                const Evaluation growthRate = mu * activityFactor;
+                const Evaluation boundedActivityFactor = min(max(activityFactor, 0.0), 1.0);
+                const Evaluation dynamicDecayRate =
+                    k_d + (k_dMax - k_d) * pow(1.0 - boundedActivityFactor, n_d);
+                // Calculate the space-limiting factor for biofilm growth and attachment
+                constexpr Scalar minimumPorosity = 1e-8;
+                constexpr Scalar minimumDenominator = 1e-8;
+                const Evaluation porosityBeforeBiofilm = porosity + biofilm;
+                const Evaluation maximumBiofilm =
+                    max(porosityBeforeBiofilm - minimumPorosity, minimumDenominator);
+                const Evaluation spaceFactor =
+                    min(max(1.0 - biofilm / maximumBiofilm, 0.0), 1.0);
+                // Calculate the attached and suspended biomass per unit bulk volume
+                const Evaluation attachedBiomass = rho_b * biofilm;
+                const Evaluation suspendedBiomass =
+                    Sw * porosity * b * intQuants.microbialConcentration();
+                // Calculate attachment and detachment
+                const Evaluation poreVelocity =
+                    normVelocityCellHydrodynamic / max(porosity, minimumPorosity);
+                const Evaluation detachmentCoefficient = k_str * pow(poreVelocity, eta);
+                const Evaluation attachmentLoss = k_a * spaceFactor * suspendedBiomass;
+                const Evaluation detachedBiomass = detachmentCoefficient * attachedBiomass;
+                // Calculate growth and decay
+                const Evaluation attachedGrowth =
+                    growthRate * spaceFactor * attachedBiomass;
+                const Evaluation suspendedGrowth = growthRate * suspendedBiomass;
+                const Evaluation attachedDecay = dynamicDecayRate * attachedBiomass;
+                const Evaluation suspendedDecay = dynamicDecayRate * suspendedBiomass;
+                // Calculate hydrogen and reactant consumption
+                const Evaluation hydrogenConsumption =
+                    (attachedGrowth + suspendedGrowth) / Y;
+                const Evaluation reactantConsumption =
+                    nu_A * hydrogenConsumption;
+                // Compute the source terms
+                source[contiMicrobialEqIdx] += suspendedGrowth - suspendedDecay -
+                                               attachmentLoss + detachedBiomass;
+                source[contiBiofilmEqIdx] += (attachedGrowth - attachedDecay -
+                                              detachedBiomass + attachmentLoss) / rho_b;
+                source[contiOxygenEqIdx] -= reactantConsumption;
+                unsigned activeGasCompIdx =
+                    FluidSystem::canonicalToActiveCompIdx(gasCompIdx);
+                source[activeGasCompIdx] -= hydrogenConsumption / rho_gRef;
             }
         }
     }
@@ -457,6 +496,16 @@ public:
     static const Scalar yieldUreaToCalciteCoefficient(unsigned satnumRegionIdx)
     {
         return params_.yieldUreaToCalciteCoefficient_[satnumRegionIdx];
+    }
+
+    static const Scalar maximumMicrobialDeathRate(unsigned satnumRegionIdx)
+    {
+        return params_.maximumMicrobialDeathRate_[satnumRegionIdx];
+    }
+
+    static const Scalar microbialDeathRateExponent(unsigned satnumRegionIdx)
+    {
+        return params_.microbialDeathRateExponent_[satnumRegionIdx];
     }
 
     static const Scalar bioDiffCoefficient(unsigned pvtRegionIdx, unsigned compIdx)
@@ -556,9 +605,9 @@ public:
         microbialConcentration_ = priVars.makeEvaluation(microbialConcentrationIdx, timeIdx, linearizationType);
         biofilmVolumeFraction_ = priVars.makeEvaluation(biofilmVolumeFractionIdx, timeIdx, linearizationType);
         biofilmMass_ = biofilmVolumeFraction_ * BioeffectsModule::densityBiofilm(satnumRegionIdx);
+        oxygenConcentration_ = priVars.makeEvaluation(oxygenConcentrationIdx, timeIdx, linearizationType);
         calciteVolumeFraction_ = 0.0;
         if constexpr (enableMICP) {
-            oxygenConcentration_ = priVars.makeEvaluation(oxygenConcentrationIdx, timeIdx, linearizationType);
             ureaConcentration_ = priVars.makeEvaluation(ureaConcentrationIdx, timeIdx, linearizationType);
             calciteVolumeFraction_ = priVars.makeEvaluation(calciteVolumeFractionIdx, timeIdx, linearizationType);
             calciteMass_ = calciteVolumeFraction_ * BioeffectsModule::densityCalcite(satnumRegionIdx);

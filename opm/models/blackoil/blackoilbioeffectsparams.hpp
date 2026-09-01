@@ -66,6 +66,8 @@ struct BlackOilBioeffectsParams
     std::vector<Scalar> oxygenConsumptionFactor_{};
     std::vector<Scalar> yieldGrowthCoefficient_{};
     std::vector<Scalar> yieldUreaToCalciteCoefficient_{};
+    std::vector<Scalar> maximumMicrobialDeathRate_{};
+    std::vector<Scalar> microbialDeathRateExponent_{};
 
     std::vector<std::vector<Scalar>> bioDiffCoefficient_{};
 };

@@ -755,12 +755,15 @@ connectionRateFoam(const std::vector<EvalWell>& cq_s,
 }
 
 template<class FluidSystem, class Indices>
-typename StandardWellConnections<FluidSystem,Indices>::Eval
+std::tuple<typename StandardWellConnections<FluidSystem,Indices>::Eval,
+           typename StandardWellConnections<FluidSystem, Indices>::Eval>
 StandardWellConnections<FluidSystem,Indices>::
 connectionRateBioeffects(Scalar& rate,
+                         Scalar& rate_o,
                          const Scalar vap_wat_rate,
                          const std::vector<EvalWell>& cq_s,
-                         const std::variant<Scalar,EvalWell>& microbialConcentration) const
+                         const std::variant<Scalar,EvalWell>& microbialConcentration,
+                         const std::variant<Scalar,EvalWell>& oxygenConcentration) const
 {
     // TODO: the application of well efficiency factor has not been tested with an example yet
     const unsigned waterCompIdx = FluidSystem::canonicalToActiveCompIdx(FluidSystem::waterCompIdx);
@@ -772,7 +775,14 @@ connectionRateBioeffects(Scalar& rate,
     rate = cq_s_bm.value();
 
     cq_s_bm *= well_.wellEfficiencyFactor();
-    return well_.restrictEval(cq_s_bm);
+
+    EvalWell cq_s_oxygen = cq_s[waterCompIdx] - vap_wat_rate;
+    cq_s_oxygen *= std::get<EvalWell>(oxygenConcentration);
+    rate_o = cq_s_oxygen.value();
+    cq_s_oxygen *= well_.wellEfficiencyFactor();
+
+    return {well_.restrictEval(cq_s_bm),
+            well_.restrictEval(cq_s_oxygen)};
 }
 
 template<typename FluidSystem, typename Indices>

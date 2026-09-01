@@ -485,6 +485,7 @@ sumDistributed(Parallel::Communication comm)
     INSTANTIATE(T,3,2)      \
     INSTANTIATE(T,3,3)      \
     INSTANTIATE(T,3,4)      \
+    INSTANTIATE(T,3,5)      \
     INSTANTIATE(T,4,3)      \
     INSTANTIATE(T,4,4)      \
     INSTANTIATE(T,4,5)      \

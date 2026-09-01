@@ -42,8 +42,8 @@ allocate(const unsigned bufferSize, const bool isMICP)
 {
     cMicrobes_.resize(bufferSize, 0.0);
     cBiofilm_.resize(bufferSize, 0.0);
+    cOxygen_.resize(bufferSize, 0.0);
     if (isMICP) {
-        cOxygen_.resize(bufferSize, 0.0);
         cUrea_.resize(bufferSize, 0.0);
         cCalcite_.resize(bufferSize, 0.0);
     }
@@ -53,11 +53,9 @@ allocate(const unsigned bufferSize, const bool isMICP)
 template<class Scalar>
 void BioeffectsContainer<Scalar>::
 assign(const unsigned globalDofIdx,
-       const Scalar oxygenConcentration,
        const Scalar ureaConcentration,
        const Scalar calciteVolumeFraction)
 {
-    cOxygen_[globalDofIdx] = oxygenConcentration;
     cUrea_[globalDofIdx] = ureaConcentration;
     cCalcite_[globalDofIdx] = calciteVolumeFraction;
 }
@@ -66,10 +64,12 @@ template<class Scalar>
 void BioeffectsContainer<Scalar>::
 assign(const unsigned globalDofIdx,
        const Scalar microbialConcentration,
-       const Scalar biofilmVolumeFraction)
+       const Scalar biofilmVolumeFraction,
+       const Scalar oxygenConcentration)
 {
     cMicrobes_[globalDofIdx] = microbialConcentration;
     cBiofilm_[globalDofIdx] = biofilmVolumeFraction;
+    cOxygen_[globalDofIdx] = oxygenConcentration;
 }
 
 template<class Scalar>
@@ -112,11 +112,12 @@ outputRestart(data::Solution& sol, const bool isMICP)
     insert(solutionMicrobes);
     auto solutionBiofilm = DataEntry{"BIOFILM", UnitSystem::measure::identity, cBiofilm_};
     insert(solutionBiofilm);
+    auto solutionOxygen = DataEntry{"OXYGEN", UnitSystem::measure::identity, cOxygen_};
+    insert(solutionOxygen);
 
     if (isMICP) {
         auto solutionVectors = std::array {
             DataEntry{"CALCITE", UnitSystem::measure::identity,      cCalcite_},
-            DataEntry{"OXYGEN",  UnitSystem::measure::concentration,  cOxygen_},
             DataEntry{"UREA",    UnitSystem::measure::concentration,    cUrea_},
         };
         std::ranges::for_each(solutionVectors,
@@ -149,10 +150,10 @@ readRestart(const unsigned globalDofIdx,
 
     assign("MICROBES", *&cMicrobes_);
     assign("BIOFILM", *&cBiofilm_);
+    assign("OXYGEN", *&cOxygen_);
 
     if (isMICP) {
         const auto fields = std::array{
-            std::pair{"OXYGEN",   &cOxygen_},
             std::pair{"UREA",     &cUrea_},
             std::pair{"CALCITE",  &cCalcite_},
         };

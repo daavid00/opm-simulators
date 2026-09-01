@@ -173,9 +173,12 @@ struct BlackOilTwoPhaseIndices
     static constexpr unsigned biofilmVolumeFractionIdx =
         enableBiofilm ? PVOffset + numPhases + numSolvents + 1
                       : std::numeric_limits<unsigned>::max();
+    //! Index of the primary variable for the reactant component
+    static constexpr unsigned oxygenConcentrationIdx =
+        enableBiofilm ? PVOffset + numPhases + numSolvents + 2
+                      : std::numeric_limits<unsigned>::max();
 
     //! MICP only available for one phase indices
-    static constexpr unsigned oxygenConcentrationIdx = std::numeric_limits<unsigned>::max();
     static constexpr unsigned ureaConcentrationIdx = std::numeric_limits<unsigned>::max();
     static constexpr unsigned calciteVolumeFractionIdx = std::numeric_limits<unsigned>::max();
 
@@ -227,8 +230,11 @@ struct BlackOilTwoPhaseIndices
     static constexpr int contiBiofilmEqIdx =
         enableBiofilm ? PVOffset + numPhases + numSolvents + 1 : -1000;
 
+    //! Index of the continuity equation for the reacttant component
+    static constexpr int contiOxygenEqIdx =
+         enableBiofilm ? PVOffset + numPhases + numSolvents + 2 : -1000;
+
     //! MICP only available for one phase indices
-    static constexpr int contiOxygenEqIdx = -1000;
     static constexpr int contiUreaEqIdx = -1000;
     static constexpr int contiCalciteEqIdx = -1000;
 

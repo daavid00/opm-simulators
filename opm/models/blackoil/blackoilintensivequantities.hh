@@ -638,7 +638,11 @@ public:
             if constexpr (enableMICP) {
                 calcite_ = priVars.makeEvaluation(Indices::calciteVolumeFractionIdx, timeIdx, linearizationType);
             }
-            porosity_ -= min(biofilm_ + calcite_, referencePorosity_ - 1e-8);
+            constexpr Scalar minimumPorosity = 1e-8;
+            const Evaluation porosityBeforeBioeffects = porosity_;
+            const Evaluation maximumSolidFraction = max(porosityBeforeBioeffects - minimumPorosity, 0.0);
+            const Evaluation solidFraction = min(max(biofilm_ + calcite_, 0.0), maximumSolidFraction);
+            porosity_ = porosityBeforeBioeffects - solidFraction;
         }
 
         // deal with salt-precipitation
